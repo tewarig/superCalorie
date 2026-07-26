@@ -9,6 +9,11 @@
       "react-native": "./src/button/Button.native.tsx",
       "types": "./src/button/Button.web.tsx",
       "default": "./src/button/Button.web.tsx"
+    },
+    "./input": {
+      "react-native": "./src/input/Input.native.tsx",
+      "types": "./src/input/Input.web.tsx",
+      "default": "./src/input/Input.web.tsx"
     }
   },
   "scripts": {

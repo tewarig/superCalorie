@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The design system ships raw TypeScript; compile it as part of this app.
-  transpilePackages: ["@supercalorie/ui"],
+  // The shared packages ship raw TypeScript; compile them as part of this app.
+  transpilePackages: ["@supercalorie/ui", "@supercalorie/core"],
 };
 
 export default nextConfig;

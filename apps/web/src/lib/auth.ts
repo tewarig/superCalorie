@@ -1,13 +1,41 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { cookies } from "next/headers";
-import { db, type User } from "./db";
+import { users, type UserRecord } from "./repo";
 
 const SESSION_COOKIE = "sc_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
-// In production set SESSION_SECRET; the dev fallback is regenerated per
-// process, which invalidates sessions on every server restart.
-const secret = process.env.SESSION_SECRET ?? randomBytes(32).toString("hex");
+/**
+ * Production must supply SESSION_SECRET — failing loudly beats silently
+ * signing sessions with a key that dies with the process. In development
+ * we cache a generated secret on disk so restarting the dev server doesn't
+ * log you out on every code change.
+ */
+function loadSecret(): string {
+  const fromEnv = process.env.SESSION_SECRET;
+  if (fromEnv) return fromEnv;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SESSION_SECRET must be set in production. Generate one with: openssl rand -hex 32",
+    );
+  }
+
+  const cachePath = resolve(process.cwd(), ".data/dev-session-secret");
+  if (existsSync(cachePath)) return readFileSync(cachePath, "utf8").trim();
+
+  const generated = randomBytes(32).toString("hex");
+  mkdirSync(dirname(cachePath), { recursive: true });
+  writeFileSync(cachePath, generated, { mode: 0o600 });
+  return generated;
+}
+
+let cachedSecret: string | null = null;
+function getSecret(): string {
+  return (cachedSecret ??= loadSecret());
+}
 
 export function hashPassword(password: string, salt?: string) {
   const actualSalt = salt ?? randomBytes(16).toString("hex");
@@ -15,17 +43,19 @@ export function hashPassword(password: string, salt?: string) {
   return { hash, salt: actualSalt };
 }
 
-export function verifyPassword(password: string, user: User): boolean {
+export function verifyPassword(password: string, user: UserRecord): boolean {
   const { hash } = hashPassword(password, user.salt);
-  return timingSafeEqual(Buffer.from(hash), Buffer.from(user.passwordHash));
+  const a = Buffer.from(hash);
+  const b = Buffer.from(user.passwordHash);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function sign(payload: string): string {
-  return createHmac("sha256", secret).update(payload).digest("base64url");
+  return createHmac("sha256", getSecret()).update(payload).digest("base64url");
 }
 
 /** Token format: base64url(userId:expiresAt).signature */
-function createToken(userId: string): string {
+export function createToken(userId: string): string {
   const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
   const payload = Buffer.from(`${userId}:${expiresAt}`).toString("base64url");
   return `${payload}.${sign(payload)}`;
@@ -45,14 +75,17 @@ function parseToken(token: string): string | null {
   return userId;
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string): Promise<string> {
+  const token = createToken(userId);
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, createToken(userId), {
+  cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     maxAge: SESSION_TTL_SECONDS,
+    path: "/",
   });
+  return token;
 }
 
 export async function destroySession() {
@@ -60,23 +93,25 @@ export async function destroySession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSessionUser(): Promise<User | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+/**
+ * Resolves the caller from either transport: the web app sends an httpOnly
+ * cookie, the mobile app an `Authorization: Bearer` header (React Native
+ * has no reliable shared cookie jar).
+ */
+export async function getSessionUser(request?: Request): Promise<UserRecord | null> {
+  let token: string | undefined;
+
+  const header = request?.headers.get("authorization");
+  if (header?.startsWith("Bearer ")) {
+    token = header.slice(7).trim();
+  } else {
+    const cookieStore = await cookies();
+    token = cookieStore.get(SESSION_COOKIE)?.value;
+  }
   if (!token) return null;
 
   const userId = parseToken(token);
-  if (!userId) return null;
-  return db.users.get(userId) ?? null;
+  return userId ? users.byId(userId) : null;
 }
 
-/** Strips credential fields before a user object leaves the API. */
-export function publicUser(user: User) {
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    dailyCalorieGoal: user.dailyCalorieGoal,
-    createdAt: user.createdAt,
-  };
-}
+export { publicUser } from "./repo";

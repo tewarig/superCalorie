@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { TodayCard } from "@/components/today-card";
 
 const FEATURES = [
@@ -32,9 +34,15 @@ export default function Home() {
           <a className="transition-colors hover:text-ink" href="#features">
             Features
           </a>
-          <a className="transition-colors hover:text-ink" href="/api/health">
-            API
-          </a>
+          <Link className="transition-colors hover:text-ink" href="/login">
+            Log in
+          </Link>
+          <Link
+            className="rounded-full bg-ink px-4 py-2 font-semibold text-cream transition-colors hover:bg-leaf-deep"
+            href="/signup"
+          >
+            Sign up
+          </Link>
         </nav>
       </header>
 
@@ -72,18 +80,18 @@ export default function Home() {
               className="rise mt-8 flex flex-wrap items-center gap-3"
               style={{ animationDelay: "240ms" }}
             >
-              <a
+              <Link
                 className="rounded-full bg-leaf px-7 py-3.5 font-semibold text-cream transition-all hover:-translate-y-0.5 hover:bg-leaf-deep"
-                href="#features"
+                href="/signup"
               >
                 Start tracking
-              </a>
-              <a
+              </Link>
+              <Link
                 className="rounded-full border border-ink px-7 py-3.5 font-semibold text-ink transition-colors hover:bg-parchment"
-                href="#features"
+                href="/login"
               >
-                See how it works
-              </a>
+                I have an account
+              </Link>
             </div>
           </div>
 

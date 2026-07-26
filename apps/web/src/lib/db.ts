@@ -1,55 +1,95 @@
+import { randomUUID } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { SEED_FOODS } from "./foods-seed";
+
 /**
- * In-memory data store, scoped to the server process.
+ * SQLite persistence via Node's built-in driver — no native dependency to
+ * compile. Requires `--experimental-sqlite` on Node 22 (baked into the npm
+ * scripts); the flag is unnecessary from Node 24 onward.
  *
- * This is a deliberate placeholder so the API contract can be built and
- * exercised end-to-end before a real database is chosen (Postgres/Prisma,
- * SQLite/Drizzle, etc.). Swap the Maps here for real queries and nothing
- * above this layer changes.
+ * The connection is opened lazily on first query, never at import time:
+ * `next build` imports every route module to collect page data, and having
+ * a dozen build workers each open (and seed) the file deadlocks it.
  *
- * `globalThis` stashing keeps the store alive across Next.js dev-server
- * hot reloads.
+ * The handle is stashed on `globalThis` so Next.js dev-server hot reloads
+ * reuse one connection instead of leaking a new one per reload.
  */
 
-export interface User {
-  id: string;
-  email: string;
-  passwordHash: string;
-  salt: string;
-  name: string;
-  dailyCalorieGoal: number;
-  createdAt: string;
+const DB_PATH = process.env.DATABASE_PATH ?? resolve(process.cwd(), ".data/supercalorie.db");
+
+function connect(): DatabaseSync {
+  mkdirSync(dirname(DB_PATH), { recursive: true });
+  const database = new DatabaseSync(DB_PATH);
+
+  database.exec("PRAGMA journal_mode = WAL");
+  database.exec("PRAGMA foreign_keys = ON");
+  // Wait out a concurrent writer rather than failing instantly.
+  database.exec("PRAGMA busy_timeout = 5000");
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      name TEXT NOT NULL,
+      daily_calorie_goal INTEGER NOT NULL DEFAULT 2000,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS foods (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      serving_label TEXT NOT NULL,
+      calories INTEGER NOT NULL,
+      protein INTEGER NOT NULL,
+      carbs INTEGER NOT NULL,
+      fat INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS entries (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      food_id TEXT REFERENCES foods(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      quantity REAL NOT NULL DEFAULT 1,
+      serving_label TEXT NOT NULL DEFAULT '',
+      calories INTEGER NOT NULL,
+      protein INTEGER NOT NULL DEFAULT 0,
+      carbs INTEGER NOT NULL DEFAULT 0,
+      fat INTEGER NOT NULL DEFAULT 0,
+      meal TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_foods_name ON foods(name);
+  `);
+
+  seedFoods(database);
+  return database;
 }
 
-export interface FoodEntry {
-  id: string;
-  userId: string;
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  meal: "breakfast" | "lunch" | "dinner" | "snack";
-  /** ISO date (YYYY-MM-DD) the entry belongs to. */
-  date: string;
-  createdAt: string;
-}
+function seedFoods(database: DatabaseSync) {
+  const { count } = database.prepare("SELECT COUNT(*) AS count FROM foods").get() as {
+    count: number;
+  };
+  if (count > 0) return;
 
-interface Store {
-  users: Map<string, User>;
-  entries: Map<string, FoodEntry>;
-}
-
-const globalStore = globalThis as unknown as { __supercalorieStore?: Store };
-
-export const db: Store = (globalStore.__supercalorieStore ??= {
-  users: new Map(),
-  entries: new Map(),
-});
-
-export function findUserByEmail(email: string): User | undefined {
-  const normalized = email.trim().toLowerCase();
-  for (const user of db.users.values()) {
-    if (user.email === normalized) return user;
+  const insert = database.prepare(
+    `INSERT INTO foods (id, name, serving_label, calories, protein, carbs, fat)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+  for (const food of SEED_FOODS) {
+    insert.run(randomUUID(), food.name, food.servingLabel, food.calories, food.protein, food.carbs, food.fat);
   }
-  return undefined;
+}
+
+const globalStore = globalThis as unknown as { __supercalorieDb?: DatabaseSync };
+
+export function getDb(): DatabaseSync {
+  return (globalStore.__supercalorieDb ??= connect());
 }

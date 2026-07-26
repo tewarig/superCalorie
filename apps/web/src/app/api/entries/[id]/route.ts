@@ -1,17 +1,14 @@
 import { getSessionUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { entries } from "@/lib/repo";
 
-/** DELETE /api/entries/:id — remove one of the current user's entries. */
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getSessionUser();
+/** DELETE /api/entries/:id — remove one of the caller's entries. */
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getSessionUser(request);
   if (!user) return Response.json({ error: "Not authenticated." }, { status: 401 });
 
   const { id } = await params;
-  const entry = db.entries.get(id);
-  if (!entry || entry.userId !== user.id) {
+  if (!entries.remove(user.id, id)) {
     return Response.json({ error: "Entry not found." }, { status: 404 });
   }
-
-  db.entries.delete(id);
   return Response.json({ ok: true });
 }
