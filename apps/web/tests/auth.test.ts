@@ -3,8 +3,7 @@ import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as me, PATCH as updateGoal } from "@/app/api/auth/me/route";
 import { POST as signup } from "@/app/api/auth/signup/route";
-import { cookieJar } from "./cookie-jar";
-import { createAccount, getRequest, jsonRequest } from "./helpers";
+import { call, cookiesFrom, createAccount, getRequest, jsonRequest } from "./helpers";
 
 describe("POST /api/auth/signup", () => {
   it("creates an account and returns a token, never the password hash", async () => {
@@ -89,12 +88,16 @@ describe("POST /api/auth/login", () => {
 
 describe("POST /api/auth/logout", () => {
   it("clears the session cookie", async () => {
-    await createAccount("bye@example.com");
-    expect((await me(getRequest("/api/auth/me"))).status).toBe(200);
+    const { cookie } = await createAccount("bye@example.com");
+    // The cookie signup issued really does authenticate, before we clear it.
+    expect((await call(me, getRequest("/api/auth/me", undefined, cookie))).status).toBe(200);
 
-    const response = await logout();
+    const response = await call(logout, jsonRequest("POST", "/api/auth/logout", undefined, undefined, cookie));
     expect(response.status).toBe(200);
-    expect((await me(getRequest("/api/auth/me"))).status).toBe(401);
+
+    // Replaying exactly what logout told the client to store leaves it anonymous.
+    const cleared = cookiesFrom(response);
+    expect((await call(me, getRequest("/api/auth/me", undefined, cleared))).status).toBe(401);
   });
 });
 
@@ -107,30 +110,39 @@ describe("/api/auth/me", () => {
     expect((await response.json()).user.id).toBe(user.id);
   });
 
-  it("falls back to the session cookie signup set, when no bearer token is sent", async () => {
-    const { user } = await createAccount("cookie@example.com");
-    const response = await me(getRequest("/api/auth/me"));
+  it("falls back to the session cookie when no bearer token is sent", async () => {
+    const { user, cookie } = await createAccount("cookie@example.com");
+    const response = await call(me, getRequest("/api/auth/me", undefined, cookie));
 
     expect(response.status).toBe(200);
     expect((await response.json()).user.id).toBe(user.id);
   });
 
   it("401s with no credentials at all", async () => {
+    // An account exists; this request simply carries nothing that proves it.
     await createAccount("me2@example.com");
-    cookieJar.reset(); // as if from a browser that never logged in
 
-    expect((await me(getRequest("/api/auth/me"))).status).toBe(401);
+    expect((await call(me, getRequest("/api/auth/me"))).status).toBe(401);
   });
 
   it("401s on a token whose signature does not verify", async () => {
     const { token } = await createAccount("me3@example.com");
-    cookieJar.reset();
 
     const [payload] = token.split(".");
     // The payload still base64-decodes to a real, unexpired user id — only
     // the HMAC is wrong, so this catches a missing signature check.
     expect((await me(getRequest("/api/auth/me", `${payload}.deadbeef`))).status).toBe(401);
     expect((await me(getRequest("/api/auth/me", "garbage"))).status).toBe(401);
+  });
+
+  it("does not fall back to a valid cookie when the bearer token is bad", async () => {
+    const { cookie } = await createAccount("both@example.com");
+    // That cookie alone would authenticate; presenting a broken bearer token
+    // alongside it must still fail, rather than quietly downgrading to the
+    // cookie and honouring a request the caller got wrong.
+    const response = await call(me, getRequest("/api/auth/me", "not-a-real-token", cookie));
+
+    expect(response.status).toBe(401);
   });
 
   it("updates the calorie goal and clamps out-of-range values", async () => {

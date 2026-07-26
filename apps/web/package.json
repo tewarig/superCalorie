@@ -8,8 +8,8 @@
     "start": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_OPTIONS=--experimental-sqlite vitest run",
-    "test:watch": "NODE_OPTIONS=--experimental-sqlite vitest"
+    "test": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest run",
+    "test:watch": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest"
   },
   "dependencies": {
     "@supercalorie/core": "*",

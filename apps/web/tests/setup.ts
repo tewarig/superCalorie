@@ -1,4 +1,4 @@
-import { beforeEach, vi } from "vitest";
+import { vi } from "vitest";
 
 /**
  * Every test file gets its own module registry, and therefore its own
@@ -13,15 +13,10 @@ import { beforeEach, vi } from "vitest";
 process.env.DATABASE_PATH = ":memory:";
 process.env.SESSION_SECRET = "test-secret-not-used-anywhere-real";
 
-// `cookies()` only exists inside a real request scope. The cookie half of
-// the auth layer is exercised through this jar instead; the bearer-token
-// half needs no mocking, since it reads the Authorization header.
+// `cookies()` only exists inside a real request scope. `call()` from
+// ./helpers establishes that scope per request; outside one the store is
+// empty. There is no shared state here to reset between tests.
 vi.mock("next/headers", async () => {
-  const { cookieJar } = await import("./cookie-jar");
-  return { cookies: async () => cookieJar };
-});
-
-beforeEach(async () => {
-  const { cookieJar } = await import("./cookie-jar");
-  cookieJar.reset();
+  const { currentCookies } = await import("./request-cookies");
+  return { cookies: async () => currentCookies() };
 });
