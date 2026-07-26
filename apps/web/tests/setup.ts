@@ -20,3 +20,20 @@ vi.mock("next/headers", async () => {
   const { currentCookies } = await import("./request-cookies");
   return { cookies: async () => currentCookies() };
 });
+
+/**
+ * No test may reach the network. Food search calls USDA and Open Food Facts,
+ * and letting that happen for real would make the suite slow, dependent on
+ * two third parties being up, and prone to changing when their data does.
+ *
+ * Rejecting by default also exercises the path that matters most: search
+ * still has to return the local library when a provider is unavailable. A
+ * test that wants provider results stubs `fetch` itself — see
+ * food-providers.test.ts.
+ */
+vi.stubGlobal(
+  "fetch",
+  vi.fn(async (input: unknown) => {
+    throw new Error(`Blocked network call in tests: ${String(input)}`);
+  }),
+);

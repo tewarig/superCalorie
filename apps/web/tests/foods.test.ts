@@ -12,9 +12,13 @@ describe("GET /api/foods", () => {
 
     expect(source).toBe("search");
     expect(foods.length).toBeGreaterThan(1);
+
+    // Ranking is a property of the curated library; remote results are
+    // appended after it, so assert against the library slice specifically.
+    const library = foods.filter((food: { source: string }) => food.source === "library");
     // "Chicken tikka" and friends before "Butter chicken".
-    expect(foods[0].name.toLowerCase().startsWith("chicken")).toBe(true);
-    expect(foods.at(-1).name).toBe("Butter chicken");
+    expect(library[0].name.toLowerCase().startsWith("chicken")).toBe(true);
+    expect(library.at(-1).name).toBe("Butter chicken");
   });
 
   it("is case-insensitive and returns whole serving macros", async () => {

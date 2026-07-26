@@ -169,6 +169,15 @@ function MealSection({
         <ul className="mt-3 divide-y divide-sand">
           {entries.map((entry) => (
             <li key={entry.id} className="group flex items-center gap-3 py-2.5">
+              {entry.photoId && (
+                /* eslint-disable-next-line @next/next/no-img-element -- served by our own API, not a static asset */
+                <img
+                  src={`/api/photos/${entry.photoId}`}
+                  alt={`Photo of ${entry.name}`}
+                  loading="lazy"
+                  className="h-10 w-10 shrink-0 rounded-lg border border-sand object-cover"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{entry.name}</p>
                 <p className="text-xs text-ink-faint">

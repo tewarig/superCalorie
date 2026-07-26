@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Food, FoodEntry, MealType, Totals, User } from "@supercalorie/core";
+import type { Food, FoodEntry, FoodSource, MealType, Totals, User } from "@supercalorie/core";
 import { getDb } from "./db";
 
 /**
@@ -45,6 +45,8 @@ interface FoodRow {
   protein: number;
   carbs: number;
   fat: number;
+  source: string;
+  external_id: string | null;
 }
 
 interface EntryRow extends FoodRow {
@@ -52,6 +54,7 @@ interface EntryRow extends FoodRow {
   meal: string;
   date: string;
   created_at: string;
+  photo_id: string | null;
 }
 
 function toUser(row: UserRow): UserRecord {
@@ -75,6 +78,7 @@ function toFood(row: FoodRow): Food {
     protein: row.protein,
     carbs: row.carbs,
     fat: row.fat,
+    source: (row.source ?? "library") as FoodSource,
   };
 }
 
@@ -91,6 +95,7 @@ function toEntry(row: EntryRow): FoodEntry {
     meal: row.meal as MealType,
     date: row.date,
     createdAt: row.created_at,
+    photoId: row.photo_id ?? null,
   };
 }
 
@@ -175,8 +180,67 @@ export const foods = {
 
   /** Fallback for a brand-new account with no history yet. */
   starters(limit = 8): Food[] {
-    const rows = all<FoodRow>("SELECT * FROM foods ORDER BY LENGTH(name) LIMIT ?", limit);
+    const rows = all<FoodRow>(
+      "SELECT * FROM foods WHERE source = 'library' ORDER BY LENGTH(name) LIMIT ?",
+      limit,
+    );
     return rows.map(toFood);
+  },
+
+  /**
+   * Stores a food fetched from USDA or Open Food Facts, returning the local
+   * row. Remote results are cached on first sight so that everything
+   * downstream — logging, "your usuals", the history behind an old entry —
+   * keeps working against local ids and stays available offline.
+   */
+  cacheRemote(food: Omit<Food, "id"> & { externalId: string }): Food {
+    const existing = one<FoodRow>(
+      "SELECT * FROM foods WHERE source = ? AND external_id = ?",
+      food.source,
+      food.externalId,
+    );
+    if (existing) return toFood(existing);
+
+    const id = randomUUID();
+    getDb()
+      .prepare(
+        `INSERT INTO foods (id, name, serving_label, calories, protein, carbs, fat, source, external_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        food.name,
+        food.servingLabel,
+        food.calories,
+        food.protein,
+        food.carbs,
+        food.fat,
+        food.source,
+        food.externalId,
+      );
+    return toFood(one<FoodRow>("SELECT * FROM foods WHERE id = ?", id)!);
+  },
+};
+
+export const photos = {
+  create(input: { userId: string; contentType: string; byteSize: number }): string {
+    const id = randomUUID();
+    getDb()
+      .prepare(
+        "INSERT INTO photos (id, user_id, content_type, byte_size, created_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(id, input.userId, input.contentType, input.byteSize, new Date().toISOString());
+    return id;
+  },
+
+  /** Scoped by user so one account can never read another's photos. */
+  byId(userId: string, id: string): { id: string; contentType: string } | null {
+    const row = one<{ id: string; content_type: string }>(
+      "SELECT id, content_type FROM photos WHERE id = ? AND user_id = ?",
+      id,
+      userId,
+    );
+    return row ? { id: row.id, contentType: row.content_type } : null;
   },
 };
 
@@ -202,13 +266,14 @@ export const entries = {
     fat: number;
     meal: MealType;
     date: string;
+    photoId?: string | null;
   }): FoodEntry {
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     getDb().prepare(
       `INSERT INTO entries
-         (id, user_id, food_id, name, quantity, serving_label, calories, protein, carbs, fat, meal, date, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, user_id, food_id, name, quantity, serving_label, calories, protein, carbs, fat, meal, date, created_at, photo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       input.userId,
@@ -223,6 +288,7 @@ export const entries = {
       input.meal,
       input.date,
       createdAt,
+      input.photoId ?? null,
     );
     return toEntry(one<EntryRow>("SELECT * FROM entries WHERE id = ?", id)!);
   },

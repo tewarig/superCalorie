@@ -17,6 +17,20 @@ export interface User {
   createdAt: string;
 }
 
+/**
+ * Where a food's numbers came from. Shown in the UI because the three are
+ * not equally trustworthy: `usda` is lab-analysed, `off` is crowd-sourced
+ * from product labels, and `library` is our curated seed list (the only one
+ * that covers home-cooked dishes, at the cost of being an estimate).
+ */
+export type FoodSource = "library" | "usda" | "off";
+
+export const SOURCE_LABELS: Record<FoodSource, string> = {
+  library: "Estimate",
+  usda: "USDA",
+  off: "Label",
+};
+
 /** An item in the food library. Macros are per one serving. */
 export interface Food {
   id: string;
@@ -26,6 +40,9 @@ export interface Food {
   protein: number;
   carbs: number;
   fat: number;
+  source: FoodSource;
+  /** Set when the food came from a packaged product. */
+  brand?: string;
 }
 
 /**
@@ -44,6 +61,8 @@ export interface FoodEntry {
   meal: MealType;
   date: string;
   createdAt: string;
+  /** Fetch at `/api/photos/:id` when present. */
+  photoId: string | null;
 }
 
 export interface Totals {

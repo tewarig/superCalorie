@@ -55,6 +55,7 @@ describe("sumTotals", () => {
     carbs,
     fat,
     meal: "snack",
+    photoId: null,
     date: "2026-01-01",
     createdAt: new Date().toISOString(),
   });

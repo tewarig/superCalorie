@@ -69,8 +69,52 @@ function connect(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_foods_name ON foods(name);
   `);
 
+  migrate(database);
   seedFoods(database);
   return database;
+}
+
+/**
+ * `CREATE TABLE IF NOT EXISTS` above only helps a fresh database — it will
+ * not add a column to a file that already exists. Anything added after the
+ * first release therefore goes here, guarded by what the table actually has.
+ */
+function migrate(database: DatabaseSync) {
+  const columns = (table: string): Set<string> =>
+    new Set(
+      (database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(
+        (row) => row.name,
+      ),
+    );
+
+  const foodColumns = columns("foods");
+  if (!foodColumns.has("source")) {
+    // Where the row came from: the curated seed list, USDA, or Open Food Facts.
+    database.exec("ALTER TABLE foods ADD COLUMN source TEXT NOT NULL DEFAULT 'library'");
+  }
+  if (!foodColumns.has("external_id")) {
+    database.exec("ALTER TABLE foods ADD COLUMN external_id TEXT");
+    // Remote results are cached into this table on first sight; the index is
+    // what stops a repeated search from inserting the same food twice.
+    // NULLs don't collide in SQLite, so curated rows are unaffected.
+    database.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_foods_external ON foods(source, external_id)",
+    );
+  }
+
+  if (!columns("entries").has("photo_id")) {
+    database.exec("ALTER TABLE entries ADD COLUMN photo_id TEXT");
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS photos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_type TEXT NOT NULL,
+      byte_size INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `);
 }
 
 function seedFoods(database: DatabaseSync) {
@@ -80,13 +124,24 @@ function seedFoods(database: DatabaseSync) {
   if (count > 0) return;
 
   const insert = database.prepare(
-    `INSERT INTO foods (id, name, serving_label, calories, protein, carbs, fat)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO foods (id, name, serving_label, calories, protein, carbs, fat, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'library')`,
   );
   for (const food of SEED_FOODS) {
     insert.run(randomUUID(), food.name, food.servingLabel, food.calories, food.protein, food.carbs, food.fat);
   }
 }
+
+/**
+ * Directory holding uploaded meal photos, kept beside the database file so
+ * one volume holds all state. `:memory:` has no directory of its own, so
+ * fall back to the conventional location.
+ */
+export const PHOTO_DIR =
+  process.env.PHOTO_DIR ??
+  (DB_PATH === ":memory:"
+    ? resolve(process.cwd(), ".data/photos")
+    : resolve(dirname(DB_PATH), "photos"));
 
 const globalStore = globalThis as unknown as { __supercalorieDb?: DatabaseSync };
 

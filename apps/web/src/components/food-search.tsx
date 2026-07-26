@@ -1,7 +1,13 @@
 "use client";
 
-import { MEAL_LABELS, MEAL_TYPES, type Food, type MealType } from "@supercalorie/core";
-import { useEffect, useRef, useState } from "react";
+import {
+  MEAL_LABELS,
+  MEAL_TYPES,
+  SOURCE_LABELS,
+  type Food,
+  type MealType,
+} from "@supercalorie/core";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 /**
@@ -16,7 +22,19 @@ export function FoodSearch({ onLogged }: { onLogged: () => void }) {
   const [meal, setMeal] = useState<MealType>(defaultMealForNow);
   const [loggingId, setLoggingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [degraded, setDegraded] = useState<string[]>([]);
+  const [photo, setPhoto] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  // Object URLs have to be released by hand or the blob leaks for the life
+  // of the page.
+  const photoPreview = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,6 +45,7 @@ export function FoodSearch({ onLogged }: { onLogged: () => void }) {
           if (!cancelled) {
             setResults(data.foods);
             setSource(data.source);
+            setDegraded(data.degraded ?? []);
           }
         } catch {
           if (!cancelled) setResults([]);
@@ -45,8 +64,19 @@ export function FoodSearch({ onLogged }: { onLogged: () => void }) {
     setLoggingId(food.id);
     setError(null);
     try {
-      await api.logEntry({ foodId: food.id, quantity, meal, date: localDate() });
+      // Upload first: an entry may only reference a photo that already
+      // exists, and a failed upload shouldn't silently log without it.
+      let photoId: string | undefined;
+      if (photo) {
+        const form = new FormData();
+        form.append("photo", photo);
+        photoId = (await api.uploadPhoto(form)).photoId;
+      }
+
+      await api.logEntry({ foodId: food.id, quantity, meal, date: localDate(), photoId });
       setQuery("");
+      setPhoto(null);
+      if (photoRef.current) photoRef.current.value = "";
       inputRef.current?.focus();
       onLogged();
     } catch (cause) {
@@ -86,23 +116,95 @@ export function FoodSearch({ onLogged }: { onLogged: () => void }) {
 
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
+      <div className="mt-3 flex items-center gap-3">
+        {/* `capture` makes a phone open the camera; desktop still gets a file picker. */}
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
+          capture="environment"
+          className="hidden"
+          onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+        />
+        <button
+          type="button"
+          onClick={() => photoRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-full border border-sand px-3.5 py-1.5 text-xs font-semibold text-ink-soft transition-colors hover:border-ink hover:text-ink"
+        >
+          <span aria-hidden>📷</span>
+          {photo ? "Change photo" : "Add photo"}
+        </button>
+
+        {photoPreview && (
+          <span className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob: preview, not a remote asset */}
+            <img
+              src={photoPreview}
+              alt="Selected meal"
+              className="h-9 w-9 rounded-lg border border-sand object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setPhoto(null);
+                if (photoRef.current) photoRef.current.value = "";
+              }}
+              className="text-xs font-semibold text-ink-faint underline underline-offset-2 hover:text-ink"
+            >
+              Remove
+            </button>
+          </span>
+        )}
+        {photo && (
+          <span className="text-xs text-ink-faint">attaches to the next food you add</span>
+        )}
+      </div>
+
       <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
         {source === "recent" ? "Your usuals" : `Results for “${query}”`}
       </p>
 
+      {degraded.length > 0 && (
+        <p className="mt-1 text-xs text-ink-faint">
+          {degraded.includes("usda") && degraded.includes("off")
+            ? "Both food databases are unreachable — showing saved foods only."
+            : `${degraded.includes("usda") ? "USDA" : "Open Food Facts"} is unreachable, so this list is partial.`}
+        </p>
+      )}
+
       <ul className="mt-2 max-h-80 divide-y divide-sand overflow-y-auto">
         {results.length === 0 && (
           <li className="py-6 text-center text-sm text-ink-faint">
-            No matches. Anything not here can be added as a custom entry.
+            Nothing found — try a simpler word, like “rice” rather than a dish name.
           </li>
         )}
         {results.map((food) => (
           <li key={food.id} className="flex items-center gap-3 py-3">
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-ink">{food.name}</p>
-              <p className="text-xs text-ink-faint">
-                {food.servingLabel} · {food.calories} kcal · P{food.protein} C{food.carbs} F
-                {food.fat}
+              <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
+                <span
+                  title={
+                    food.source === "usda"
+                      ? "USDA FoodData Central — lab analysed"
+                      : food.source === "off"
+                        ? "Open Food Facts — taken from the product label"
+                        : "Our curated list — a reasonable estimate"
+                  }
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    food.source === "usda"
+                      ? "bg-mint text-leaf-deep"
+                      : food.source === "off"
+                        ? "bg-parchment text-ink-soft"
+                        : "bg-tangerine-soft text-tangerine"
+                  }`}
+                >
+                  {SOURCE_LABELS[food.source]}
+                </span>
+                <span>
+                  {food.servingLabel} · {food.calories} kcal · P{food.protein} C{food.carbs} F
+                  {food.fat}
+                </span>
               </p>
             </div>
             <button

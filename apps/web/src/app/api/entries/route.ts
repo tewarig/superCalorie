@@ -1,6 +1,6 @@
 import { MEAL_TYPES, todayISO, type MealType } from "@supercalorie/core";
 import { getSessionUser } from "@/lib/auth";
-import { entries, foods, sumTotals } from "@/lib/repo";
+import { entries, foods, photos, sumTotals } from "@/lib/repo";
 
 const isValidDate = (value: unknown): value is string =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -42,6 +42,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Quantity must be between 0 and 50." }, { status: 400 });
   }
 
+  // Verified against the caller, so an entry can only ever reference a photo
+  // that account uploaded.
+  let photoId: string | null = null;
+  if (typeof body?.photoId === "string" && body.photoId) {
+    if (!photos.byId(user.id, body.photoId)) {
+      return Response.json({ error: "Photo not found." }, { status: 404 });
+    }
+    photoId = body.photoId;
+  }
+
   if (typeof body?.foodId === "string") {
     const food = foods.byId(body.foodId);
     if (!food) return Response.json({ error: "Food not found." }, { status: 404 });
@@ -58,6 +68,7 @@ export async function POST(request: Request) {
       fat: Math.round(food.fat * quantity),
       meal,
       date,
+      photoId,
     });
     return Response.json({ entry }, { status: 201 });
   }
@@ -82,6 +93,7 @@ export async function POST(request: Request) {
     fat: Math.max(0, Math.round(Number(body?.fat) || 0)),
     meal,
     date,
+    photoId,
   });
   return Response.json({ entry }, { status: 201 });
 }

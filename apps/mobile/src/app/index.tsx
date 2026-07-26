@@ -1,6 +1,7 @@
 import {
   MEAL_LABELS,
   MEAL_TYPES,
+  SOURCE_LABELS,
   macroTargets,
   todayISO,
   type DaySummary,
@@ -13,6 +14,8 @@ import { Redirect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,7 +25,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "@/lib/api";
+import { api, photoSource } from "@/lib/api";
+import { pickPhoto, takePhoto, uploadPhoto, type PickedPhoto } from "@/lib/photo";
 import { useSession } from "@/lib/session";
 
 const MACROS = [
@@ -40,6 +44,8 @@ export default function TodayScreen() {
   const [meal, setMeal] = useState<MealType>(defaultMealForNow);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -110,12 +116,37 @@ export default function TodayScreen() {
   const targets = macroTargets(goal);
 
   async function log(food: Food, quantity: number) {
+    if (busy) return;
+    setBusy(true);
     try {
-      await api.logEntry({ foodId: food.id, quantity, meal, date: todayISO() });
+      // Upload first — an entry may only reference a photo that already
+      // exists, so a failed upload must not log a photo-less entry silently.
+      const photoId = photo ? await uploadPhoto(photo) : undefined;
+      await api.logEntry({ foodId: food.id, quantity, meal, date: todayISO(), photoId });
       setQuery("");
+      setPhoto(null);
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not log that.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function attachPhoto(from: "camera" | "library") {
+    try {
+      const picked = from === "camera" ? await takePhoto() : await pickPhoto();
+      if (picked) setPhoto(picked);
+      else if (from === "camera") {
+        // launchCameraAsync also returns null when permission was refused,
+        // which otherwise looks like the button doing nothing at all.
+        Alert.alert(
+          "Camera unavailable",
+          "Allow camera access in Settings, or pick an existing photo instead.",
+        );
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not open the camera.");
     }
   }
 
@@ -200,6 +231,24 @@ export default function TodayScreen() {
           ))}
         </View>
 
+        <View style={styles.photoRow}>
+          <Button size="sm" variant="outline" onPress={() => attachPhoto("camera")}>
+            Take photo
+          </Button>
+          <Button size="sm" variant="ghost" onPress={() => attachPhoto("library")}>
+            Choose
+          </Button>
+          {photo && (
+            <View style={styles.photoPreviewRow}>
+              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+              <Pressable onPress={() => setPhoto(null)} hitSlop={8}>
+                <Text style={styles.removePhoto}>Remove</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+        {photo && <Text style={styles.photoHint}>Attaches to the next food you add.</Text>}
+
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -223,6 +272,8 @@ export default function TodayScreen() {
                     {food.name}
                   </Text>
                   <Text style={styles.foodMeta}>
+                    <Text style={styles.sourceBadge}>{SOURCE_LABELS[food.source]}</Text>
+                    {"  "}
                     {food.servingLabel} · {food.calories} kcal
                   </Text>
                 </View>
@@ -252,6 +303,9 @@ export default function TodayScreen() {
                 ) : (
                   items.map((entry, index) => (
                     <View key={entry.id} style={[styles.foodRow, index > 0 && styles.rowBorder]}>
+                      {entry.photoId && (
+                        <Image source={photoSource(entry.photoId)} style={styles.entryThumb} />
+                      )}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.foodName} numberOfLines={1}>
                           {entry.name}
@@ -392,4 +446,33 @@ const styles = StyleSheet.create({
   mealHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
   mealTotal: { fontSize: fontSize.sm, fontWeight: "600", color: color.textMuted },
   empty: { fontSize: fontSize.sm, color: color.textFaint, paddingVertical: space.sm },
+  photoRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.sm },
+  photoPreviewRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  photoPreview: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  removePhoto: { fontSize: fontSize.xs, fontWeight: "600", color: color.textFaint },
+  photoHint: {
+    fontSize: fontSize.xs,
+    color: color.textFaint,
+    marginTop: space.xs,
+    marginBottom: space.sm,
+  },
+  entryThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  sourceBadge: {
+    fontSize: fontSize.xs,
+    fontWeight: "700",
+    color: color.primary,
+    textTransform: "uppercase",
+  },
 });

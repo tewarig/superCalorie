@@ -1,8 +1,10 @@
 import { getSessionUser } from "@/lib/auth";
+import { searchAllSources } from "@/lib/food-providers";
 import { foods } from "@/lib/repo";
 
 /**
- * GET /api/foods?q=banana — search the library.
+ * GET /api/foods?q=banana — search the curated library, USDA, and Open Food
+ *                           Facts, nearest-to-useful first.
  * GET /api/foods          — the user's most-logged foods, so the log screen
  *                           is useful before they type anything.
  */
@@ -16,8 +18,10 @@ export async function GET(request: Request) {
     return Response.json({
       foods: recent.length > 0 ? recent : foods.starters(),
       source: "recent",
+      degraded: [],
     });
   }
 
-  return Response.json({ foods: foods.search(query), source: "search" });
+  const { foods: results, degraded } = await searchAllSources(query);
+  return Response.json({ foods: results, source: "search", degraded });
 }
