@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS=--experimental-sqlite next dev",
-    "build": "NODE_OPTIONS=--experimental-sqlite next build",
-    "start": "NODE_OPTIONS=--experimental-sqlite next start",
+    "dev": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite next dev",
+    "build": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite next build",
+    "start": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--experimental-sqlite vitest run",
+    "test:watch": "NODE_OPTIONS=--experimental-sqlite vitest"
   },
   "dependencies": {
     "@supercalorie/core": "*",
@@ -15,6 +17,9 @@
     "next": "16.2.12",
     "react": "19.2.3",
     "react-dom": "19.2.3"
+  },
+  "engines": {
+    "node": ">=22.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

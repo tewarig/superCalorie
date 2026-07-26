@@ -38,7 +38,13 @@ Both implementations share one props contract and one `tokens.ts`, so call sites
 
 ## Getting started
 
-Requires **Node 22+** (Next 16 needs ≥20.9; `node:sqlite` needs the flag baked into the scripts). There's an `.nvmrc` — run `nvm use`.
+**Node 22.5+ is required** — it's the floor for `node:sqlite`, which the backend uses for persistence. (Next.js 16 separately needs ≥20.9.) An `.nvmrc` pins the major version:
+
+```sh
+nvm use        # or: nvm install 22
+```
+
+On Node 22 the SQLite driver is still behind `--experimental-sqlite`, so the flag is baked into the web app's npm scripts via `NODE_OPTIONS`. It becomes unnecessary on Node 24+, at which point those scripts can be simplified.
 
 ```sh
 npm install
@@ -48,11 +54,14 @@ npm run dev:mobile   # Expo dev server (press i / a for iOS / Android)
 npm run dev          # both, via turbo
 
 npm run build        # build all workspaces
+npm run test         # API route tests (vitest, in-memory database)
 npm run typecheck    # tsc across all workspaces
 npm run lint
 ```
 
 Then open http://localhost:3000, create an account, and start logging.
+
+If you forget to switch Node versions, the web app's scripts stop with an explicit message rather than the misleading `--experimental-sqlite is not allowed in NODE_OPTIONS` you'd otherwise get from Node 20.
 
 ### Pointing the mobile app at the backend
 
