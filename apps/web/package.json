@@ -12,8 +12,8 @@
     "test:watch": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest"
   },
   "dependencies": {
-    "@supercalorie/core": "*",
-    "@supercalorie/ui": "*",
+    "@supercalorie/core": "workspace:*",
+    "@supercalorie/ui": "workspace:*",
     "next": "16.2.12",
     "react": "19.2.3",
     "react-dom": "19.2.3"

@@ -1,36 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @supercalorie/web
 
-## Getting Started
+Next.js 16 app serving both the web UI and the backend — auth, the food API,
+and photo storage all live here. See the [root README](../../README.md) for
+architecture, the API table, and deployment notes.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+pnpm --filter web dev      # http://localhost:3000
+pnpm --filter web test     # vitest against the real route handlers
+pnpm --filter web build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Those work from anywhere in the repo; from this directory, `pnpm dev` does
+the same.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Requires **Node 22.5+** — `node:sqlite` does not exist before it, and the
+scripts stop with an explanatory message on an older runtime.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Copy `.env.example` to `.env.local` before running. `SESSION_SECRET` is
+required in production. `USDA_API_KEY` is optional, but without it the food
+search falls back to a heavily rate-limited demo key.

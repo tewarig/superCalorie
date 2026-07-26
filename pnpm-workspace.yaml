@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 10 blocks dependency postinstall scripts unless they're listed here.
+# (pnpm 11 replaces onlyBuiltDependencies/ignoredBuiltDependencies with a
+# single `allowBuilds` map — this block needs rewriting on that upgrade.)
+# Both of these were verified unnecessary: typecheck, lint, test, build, and
+# the Expo bundle all pass without them.
+#
+#   sharp          Next.js image optimisation. Nothing uses next/image — meal
+#                  photos are served by our own route — so it never runs. Move
+#                  it to onlyBuiltDependencies if next/image is adopted.
+#   unrs-resolver  Native resolver for the ESLint import plugin, which falls
+#                  back to a JS implementation. Lint passes either way.
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

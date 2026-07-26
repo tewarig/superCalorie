@@ -1,10 +1,6 @@
 {
   "name": "supercalorie",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=web",
@@ -20,9 +16,10 @@
   "engines": {
     "node": ">=22.5.0"
   },
+  "packageManager": "pnpm@10.17.1",
   "devEngines": {
     "packageManager": {
-      "name": "npm",
+      "name": "pnpm",
       "version": "^10",
       "onFail": "warn"
     }

@@ -6,10 +6,11 @@ A calm calorie tracker. Turborepo monorepo with a native mobile app, a separate 
 
 Everything in V1 serves one loop — **open the app, find what you ate in seconds, see what's left today**. Charts, streaks, and AI estimation are layers on top of that loop, not substitutes for it.
 
-- **Searchable food library.** ~60 seeded foods (Indian and Western staples), ranked so prefix matches win — typing `ban` surfaces *Banana*, not *Whole wheat bread*.
+- **Searchable food library.** ~60 curated foods (Indian and Western staples) answer instantly and offline, ranked so prefix matches win — typing `ban` surfaces *Banana*, not *Whole wheat bread*. When the library runs thin, USDA and Open Food Facts fill in behind it.
 - **One-tap logging.** Pick a meal (defaulted by time of day), hit **Add** for a full serving or **½** for half. Macros scale with quantity.
 - **Your usuals.** With an empty search box the app returns your most-logged foods, so the common case needs zero typing.
 - **Honest totals.** A calorie ring plus macro bars against targets derived from your goal (30/40/30 split).
+- **Meal photos.** Snap or pick a picture when you log; it shows as a thumbnail on the entry.
 - **Same account everywhere.** Log lunch on the phone, see it on the laptop.
 
 ## Layout
@@ -46,19 +47,21 @@ One caveat: the tokens are mirrored by hand as CSS variables in `apps/web/src/ap
 nvm use        # or: nvm install 22
 ```
 
-On Node 22 the SQLite driver is still behind `--experimental-sqlite`, so the flag is baked into the web app's npm scripts via `NODE_OPTIONS`. It becomes unnecessary on Node 24+, at which point those scripts can be simplified.
+On Node 22 the SQLite driver is still behind `--experimental-sqlite`, so the flag is baked into the web app's package scripts via `NODE_OPTIONS`. It becomes unnecessary on Node 24+, at which point those scripts can be simplified.
+
+This repo uses **pnpm** (pinned via `packageManager`, so `corepack enable` gets you the right version):
 
 ```sh
-npm install
+pnpm install
 
-npm run dev:web      # Next.js on http://localhost:3000
-npm run dev:mobile   # Expo dev server (press i / a for iOS / Android)
-npm run dev          # both, via turbo
+pnpm dev:web      # Next.js on http://localhost:3000
+pnpm dev:mobile   # Expo dev server (press i / a for iOS / Android)
+pnpm dev          # both, via turbo
 
-npm run build        # build all workspaces
-npm run test         # API route tests (vitest, in-memory database)
-npm run typecheck    # tsc across all workspaces
-npm run lint
+pnpm build        # build all workspaces
+pnpm test         # API route tests (vitest, in-memory database)
+pnpm typecheck    # tsc across all workspaces
+pnpm lint
 ```
 
 Then open http://localhost:3000, create an account, and start logging.
@@ -70,7 +73,7 @@ If you forget to switch Node versions, the web app's scripts stop with an explic
 Defaults to `localhost:3000` (iOS simulator) and `10.0.2.2:3000` (Android emulator). On a **physical device**, set your machine's LAN address:
 
 ```sh
-EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 npm run dev:mobile
+EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 pnpm dev:mobile
 ```
 
 The login screen prints the backend URL it resolved along the bottom, which makes a misconfigured address obvious instead of mysterious. Start the web app first — mobile has no local store to fall back on.
@@ -88,9 +91,11 @@ Sessions work over two transports: the web app uses an httpOnly cookie, the mobi
 | `/api/auth/login` | POST | `{ email, password }` → session |
 | `/api/auth/logout` | POST | clear session |
 | `/api/auth/me` | GET / PATCH | current user / update calorie goal |
-| `/api/foods` | GET | `?q=` searches the library; no query returns your most-logged foods |
+| `/api/foods` | GET | `?q=` searches the library, USDA, and Open Food Facts; no query returns your most-logged foods |
 | `/api/entries` | GET / POST | a day's log with totals / log food by `foodId` or as a custom entry |
 | `/api/entries/:id` | DELETE | remove an entry |
+| `/api/photos` | POST | upload a meal photo (multipart, field `photo`) → `photoId` |
+| `/api/photos/:id` | GET | stream a photo back, scoped to its owner |
 
 Copy `apps/web/.env.example` to `.env.local`. **`SESSION_SECRET` is required in production** — the app refuses to boot without it. In development a secret is generated once and cached in `.data/` so restarts don't log you out.
 
@@ -129,14 +134,14 @@ Entry macros are **denormalized at log time** — correcting a food in the libra
 ## Testing
 
 ```sh
-npm run test                      # everything
-npm test --workspace=web          # just the web app
-npm run test:watch --workspace=web
+pnpm test                      # everything
+pnpm --filter web test         # just the web app
+pnpm --filter web test:watch
 ```
 
 Vitest in a `node` environment, importing the real route handlers — no HTTP server, no mocked database. Each test file gets its own `:memory:` SQLite database via `DATABASE_PATH`, created and seeded and discarded with the file, so no test file can leak state into another.
 
-The one stub is `next/headers`, since `cookies()` only exists inside a real request scope. `tests/request-cookies.ts` reproduces that scope with an `AsyncLocalStorage`: a store belongs to exactly one request, reads see only the cookies that request arrived with, and writes come back as `Set-Cookie`. Calling a handler outside that scope gets an empty store.
+Two things are stubbed. `fetch` is blocked by default, so no test reaches USDA or Open Food Facts — the suite would otherwise be slow and hostage to two third parties; `food-providers.test.ts` drives the merge with fixtures instead. The other is `next/headers`, since `cookies()` only exists inside a real request scope. `tests/request-cookies.ts` reproduces that scope with an `AsyncLocalStorage`: a store belongs to exactly one request, reads see only the cookies that request arrived with, and writes come back as `Set-Cookie`. Calling a handler outside that scope gets an empty store.
 
 That per-request boundary is the point. A single shared jar would let a cookie set during setup leak into a later request meant to be anonymous — which passes the test for the wrong reason. Here, the "401s with no credentials" test genuinely sends no credentials, and both transports get real coverage: the cookie path through `call()`, the bearer path with no mocking at all.
 
@@ -161,10 +166,10 @@ Not yet covered: React components, and the Expo app (no test runner in `apps/mob
 SQLite lives on disk, so this wants a host with a **persistent volume** and a single instance. Fly.io, Railway, Render, or any VPS all work.
 
 ```sh
-npm run build
+pnpm build
 SESSION_SECRET=$(openssl rand -hex 32) \
 DATABASE_PATH=/data/supercalorie.db \
-  npm run start --workspace=web
+  pnpm --filter web start
 ```
 
 Point `DATABASE_PATH` at the mounted volume, not into the app directory, or a redeploy will wipe every account. Treat `SESSION_SECRET` as a real secret — rotating it invalidates every existing session.
@@ -183,7 +188,7 @@ The good news, checked against the Workers runtime rather than assumed: **the cr
 
 Roughly:
 
-1. `npm i @opennextjs/cloudflare --workspace=web` and `npm i -D wrangler --workspace=web`.
+1. `pnpm add @opennextjs/cloudflare --filter web` and `pnpm add -D wrangler --filter web`.
 2. Add `wrangler.jsonc` with `nodejs_compat`, a recent `compatibility_date`, and a D1 binding (say `DB`). Add a KV namespace for the incremental cache if you want ISR.
 3. Call `initOpenNextCloudflareForDev()` in `next.config.ts` so `getCloudflareContext()` works under `next dev`.
 4. Move the `CREATE TABLE` statements out of `connect()` into a real migration (`wrangler d1 migrations create`) — D1 has migrations, and you no longer want DDL running on first query. Seed the food library as a migration too.
@@ -191,7 +196,7 @@ Roughly:
 6. Replace the on-disk dev-secret cache in `auth.ts` with `wrangler secret put SESSION_SECRET` — the Workers `node:fs` is a virtual filesystem whose `/tmp` is wiped between requests.
 7. Scripts: `"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"` and `"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"`.
 
-Test with `npm run preview --workspace=web` (real workerd, local D1) before deploying.
+Test with `pnpm --filter web preview` (real workerd, local D1) before deploying.
 
 The test suite is a genuine asset here: the tests drive the routes rather than the driver, so once `repo.ts` is async they tell you whether the port preserved behaviour.
 
