@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# builds
+.next/
+out/
+dist/
+build/
+.expo/
+.turbo/
+*.tsbuildinfo
+expo-env.d.ts
+
+# native builds
+apps/mobile/ios/
+apps/mobile/android/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.env
+.env.local
+.env.*.local

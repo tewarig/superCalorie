@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/*
+ * Web-side mirror of packages/ui/src/tokens.ts. If you change a value
+ * there, change it here too (a codegen step can replace this later).
+ */
+:root {
+  --cream: #faf5ec;
+  --parchment: #f3ecdd;
+  --sand: #e7dcc6;
+  --ink: #1c2a24;
+  --ink-soft: #44544c;
+  --ink-faint: #7a877f;
+  --leaf: #2f6b4f;
+  --leaf-deep: #1f4a36;
+  --leaf-bright: #3e8a66;
+  --mint: #dfede4;
+  --tangerine: #e8641c;
+  --tangerine-soft: #fbe3d2;
+  --berry: #a63d57;
+  --honey: #e3a82b;
+}
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-parchment: var(--parchment);
+  --color-sand: var(--sand);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-leaf: var(--leaf);
+  --color-leaf-deep: var(--leaf-deep);
+  --color-leaf-bright: var(--leaf-bright);
+  --color-mint: var(--mint);
+  --color-tangerine: var(--tangerine);
+  --color-tangerine-soft: var(--tangerine-soft);
+  --color-berry: var(--berry);
+  --color-honey: var(--honey);
+  --font-display: var(--font-display), "Georgia", serif;
+  --font-body: var(--font-body), "Avenir Next", sans-serif;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body), sans-serif;
+}
+
+/* Subtle paper grain over the cream background. */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: 339;
+  }
+}
+
+.ring-anim {
+  animation: ring-fill 1.2s cubic-bezier(0.22, 1, 0.36, 1) both 0.3s;
+}
