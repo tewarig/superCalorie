@@ -10,8 +10,8 @@ const FEATURES = [
     symbol: "01",
   },
   {
-    title: "One account, every screen",
-    body: "Web, iOS, and Android share the same backend — start lunch on your phone, finish on your laptop.",
+    title: "Yours, and offline",
+    body: "Everything is stored on your device and works with no account and no connection. Export any time as JSON or CSV.",
     accent: "bg-mint text-leaf-deep",
     symbol: "02",
   },
@@ -34,14 +34,11 @@ export default function Home() {
           <a className="transition-colors hover:text-ink" href="#features">
             Features
           </a>
-          <Link className="transition-colors hover:text-ink" href="/login">
-            Log in
-          </Link>
           <Link
             className="rounded-full bg-ink px-4 py-2 font-semibold text-cream transition-colors hover:bg-leaf-deep"
-            href="/signup"
+            href="/today"
           >
-            Sign up
+            Open the app
           </Link>
         </nav>
       </header>
@@ -82,16 +79,16 @@ export default function Home() {
             >
               <Link
                 className="rounded-full bg-leaf px-7 py-3.5 font-semibold text-cream transition-all hover:-translate-y-0.5 hover:bg-leaf-deep"
-                href="/signup"
+                href="/today"
               >
-                Start tracking
+                Start tracking — no account needed
               </Link>
-              <Link
+              <a
                 className="rounded-full border border-ink px-7 py-3.5 font-semibold text-ink transition-colors hover:bg-parchment"
-                href="/login"
+                href="#features"
               >
-                I have an account
-              </Link>
+                See how it works
+              </a>
             </div>
           </div>
 

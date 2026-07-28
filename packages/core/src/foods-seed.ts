@@ -1,9 +1,13 @@
+import type { Food } from "./types";
+
 /**
- * Starter food library. Macros are per serving and rounded — good enough
- * for calorie tracking, and deliberately opinionated toward everyday
- * Indian and Western staples so the first search a user runs finds
- * something. A real deployment would layer a full database (e.g. Open
- * Food Facts) behind the same `/api/foods` contract.
+ * The offline food library. It ships inside both apps, so search works with
+ * no network and no account — USDA and Open Food Facts only ever add to it.
+ *
+ * Macros are per serving and rounded. The list leans deliberately toward
+ * everyday Indian and Western staples, because no nutrition database covers
+ * home-cooked dishes: USDA has no entry for dal tadka or masala dosa, and
+ * searching it for "poha" returns a Cape gooseberry.
  */
 export interface SeedFood {
   name: string;
@@ -14,7 +18,16 @@ export interface SeedFood {
   fat: number;
 }
 
-export const SEED_FOODS: SeedFood[] = [
+/**
+ * Ids are derived from the name rather than random, so a food has the same
+ * id on every device. Import/merge and "your usuals" both depend on two
+ * copies of the library agreeing on what "Banana" is called.
+ */
+export function seedFoodId(name: string): string {
+  return `lib:${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+const RAW_SEED_FOODS: SeedFood[] = [
   // Indian staples
   { name: "Roti (whole wheat)", servingLabel: "1 roti", calories: 104, protein: 3, carbs: 20, fat: 2 },
   { name: "Naan", servingLabel: "1 piece", calories: 262, protein: 9, carbs: 45, fat: 5 },
@@ -87,3 +100,10 @@ export const SEED_FOODS: SeedFood[] = [
   { name: "Cheeseburger", servingLabel: "1 burger", calories: 535, protein: 28, carbs: 41, fat: 28 },
   { name: "Veg sandwich", servingLabel: "1 sandwich", calories: 290, protein: 10, carbs: 40, fat: 10 },
 ];
+
+/** The library as ready-to-use Food records. */
+export const SEED_FOODS: Food[] = RAW_SEED_FOODS.map((food) => ({
+  ...food,
+  id: seedFoodId(food.name),
+  source: "library" as const,
+}));

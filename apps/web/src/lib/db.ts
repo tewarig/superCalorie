@@ -1,8 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SEED_FOODS } from "./foods-seed";
+import { SEED_FOODS } from "@supercalorie/core";
 
 /**
  * SQLite persistence via Node's built-in driver — no native dependency to
@@ -127,8 +126,10 @@ function seedFoods(database: DatabaseSync) {
     `INSERT INTO foods (id, name, serving_label, calories, protein, carbs, fat, source)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'library')`,
   );
+  // Seed ids come from the shared library rather than being random, so a
+  // food has the same id on the server as it does on every device.
   for (const food of SEED_FOODS) {
-    insert.run(randomUUID(), food.name, food.servingLabel, food.calories, food.protein, food.carbs, food.fat);
+    insert.run(food.id, food.name, food.servingLabel, food.calories, food.protein, food.carbs, food.fat);
   }
 }
 

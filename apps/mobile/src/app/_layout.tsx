@@ -1,11 +1,15 @@
 import { color } from "@supercalorie/ui/tokens";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SessionProvider } from "@/lib/session";
 
+/**
+ * No session provider and no auth gate: the app opens straight into the
+ * tracker. Signing in is an optional extra for backing up to a server, not
+ * a prerequisite for using anything.
+ */
 export default function RootLayout() {
   return (
-    <SessionProvider>
+    <>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -13,6 +17,6 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: color.background },
         }}
       />
-    </SessionProvider>
+    </>
   );
 }

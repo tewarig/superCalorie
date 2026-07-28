@@ -1,0 +1,204 @@
+import { describe, expect, it } from "vitest";
+import {
+  emptySnapshot,
+  mergeEntries,
+  mergeSnapshot,
+  parseCSV,
+  parseJSON,
+  toCSV,
+  toJSON,
+  type FoodEntry,
+  type Snapshot,
+} from "@supercalorie/core";
+
+let counter = 0;
+const makeId = () => `generated-${++counter}`;
+
+function entry(overrides: Partial<FoodEntry> = {}): FoodEntry {
+  return {
+    id: overrides.id ?? makeId(),
+    foodId: null,
+    name: "Roti",
+    quantity: 2,
+    servingLabel: "1 roti",
+    calories: 208,
+    protein: 6,
+    carbs: 40,
+    fat: 4,
+    meal: "dinner",
+    date: "2026-07-26",
+    createdAt: "2026-07-26T18:00:00.000Z",
+    photoId: null,
+    ...overrides,
+  };
+}
+
+function snapshotWith(entries: FoodEntry[]): Snapshot {
+  return { ...emptySnapshot(), entries };
+}
+
+describe("JSON export and import", () => {
+  it("round-trips a snapshot without losing anything", () => {
+    const original = {
+      ...emptySnapshot(),
+      profile: { name: "Gaurav", dailyCalorieGoal: 2400 },
+      entries: [entry({ id: "a", photoId: "photo-1", foodId: "lib:roti-whole-wheat" })],
+      customFoods: [
+        {
+          id: "custom-1",
+          name: "Mum's dal",
+          servingLabel: "1 bowl",
+          calories: 210,
+          protein: 11,
+          carbs: 28,
+          fat: 6,
+          source: "library" as const,
+        },
+      ],
+    };
+
+    const restored = parseJSON(toJSON(original));
+
+    expect(restored.profile).toEqual(original.profile);
+    expect(restored.entries).toEqual(original.entries);
+    expect(restored.customFoods).toEqual(original.customFoods);
+  });
+
+  it.each([
+    ["not json at all", "That file isn't valid JSON."],
+    ['{"version":99,"entries":[]}', "Unsupported export version"],
+    ['{"version":1}', "no entries list"],
+  ])("rejects %s", (text, message) => {
+    expect(() => parseJSON(text)).toThrow(new RegExp(message.replace(/[.'"]/g, ".")));
+  });
+
+  it("survives a hand-edited file with junk in it", () => {
+    const restored = parseJSON(
+      JSON.stringify({
+        version: 1,
+        profile: { dailyCalorieGoal: "not a number" },
+        entries: [
+          entry({ id: "good" }),
+          { id: "no-date", calories: 100 },
+          null,
+          "nonsense",
+          { ...entry({ id: "bad-meal" }), meal: "brunch" },
+        ],
+      }),
+    );
+
+    expect(restored.entries.map((e) => e.id)).toEqual(["good", "bad-meal"]);
+    // An unknown meal lands in snacks rather than corrupting the day view.
+    expect(restored.entries[1].meal).toBe("snack");
+    expect(restored.profile.dailyCalorieGoal).toBe(2000);
+  });
+
+  it("clamps an absurd calorie goal instead of trusting the file", () => {
+    expect(parseJSON('{"version":1,"profile":{"dailyCalorieGoal":999999},"entries":[]}').profile
+      .dailyCalorieGoal).toBe(10000);
+    expect(parseJSON('{"version":1,"profile":{"dailyCalorieGoal":5},"entries":[]}').profile
+      .dailyCalorieGoal).toBe(800);
+  });
+});
+
+describe("CSV export and import", () => {
+  it("quotes fields that would otherwise break the row", () => {
+    const csv = toCSV(snapshotWith([entry({ name: 'Rice, "boiled"' })]));
+    const [, row] = csv.split("\n");
+
+    expect(row).toContain('"Rice, ""boiled"""');
+    // One row in, one row out — the comma didn't split the record.
+    expect(csv.split("\n")).toHaveLength(2);
+  });
+
+  it("round-trips through a spreadsheet-shaped file", () => {
+    const csv = toCSV(snapshotWith([entry({ name: 'Rice, "boiled"', calories: 205 })]));
+    const parsed = parseCSV(csv, makeId);
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]).toMatchObject({
+      name: 'Rice, "boiled"',
+      calories: 205,
+      meal: "dinner",
+      date: "2026-07-26",
+    });
+  });
+
+  it("skips rows that aren't usable rather than failing the whole import", () => {
+    const parsed = parseCSV(
+      [
+        "date,meal,name,calories",
+        "2026-07-26,lunch,Good row,300",
+        "not-a-date,lunch,Bad date,300",
+        "2026-07-27,lunch,No calories,",
+      ].join("\n"),
+      makeId,
+    );
+
+    expect(parsed.map((e) => e.name)).toEqual(["Good row"]);
+  });
+
+  it("accepts a minimal file a person could type by hand", () => {
+    const parsed = parseCSV("date,calories\n2026-07-26,450", makeId);
+
+    expect(parsed[0]).toMatchObject({
+      name: "Imported entry",
+      calories: 450,
+      meal: "snack",
+      quantity: 1,
+    });
+  });
+
+  it("refuses a file missing the columns it needs", () => {
+    expect(() => parseCSV("name,protein\nRoti,6", makeId)).toThrow(/date.*calories/);
+  });
+});
+
+describe("merging", () => {
+  it("is idempotent — importing the same file twice changes nothing", () => {
+    const start = snapshotWith([entry({ id: "a" })]);
+    const incoming = [entry({ id: "a" }), entry({ id: "b" })];
+
+    const first = mergeEntries(start, incoming);
+    expect(first.added).toBe(1);
+    expect(first.skipped).toBe(1);
+
+    const second = mergeEntries(first.snapshot, incoming);
+    expect(second.added).toBe(0);
+    expect(second.snapshot.entries).toHaveLength(2);
+  });
+
+  it("keeps newer local entries when restoring an older backup", () => {
+    const local = snapshotWith([entry({ id: "local-new", date: "2026-07-26" })]);
+    const backup = snapshotWith([entry({ id: "from-backup", date: "2026-07-01" })]);
+
+    const merged = mergeEntries(local, backup.entries);
+
+    expect(merged.snapshot.entries.map((e) => e.id)).toEqual(["from-backup", "local-new"]);
+  });
+
+  it("never lets an imported goal overwrite the one set on this device", () => {
+    const local: Snapshot = {
+      ...emptySnapshot(),
+      profile: { name: "Gaurav", dailyCalorieGoal: 2400 },
+    };
+    const incoming: Snapshot = {
+      ...emptySnapshot(),
+      profile: { name: "Someone else", dailyCalorieGoal: 1200 },
+    };
+
+    const merged = mergeSnapshot(local, incoming);
+
+    expect(merged.snapshot.profile.dailyCalorieGoal).toBe(2400);
+    expect(merged.snapshot.profile.name).toBe("Gaurav");
+  });
+
+  it("adopts an imported name only when this device has none", () => {
+    const merged = mergeSnapshot(emptySnapshot(), {
+      ...emptySnapshot(),
+      profile: { name: "Gaurav", dailyCalorieGoal: 1800 },
+    });
+
+    expect(merged.snapshot.profile.name).toBe("Gaurav");
+  });
+});

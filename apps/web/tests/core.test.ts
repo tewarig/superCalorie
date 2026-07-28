@@ -47,6 +47,7 @@ describe("formatDateLabel", () => {
 describe("sumTotals", () => {
   const entry = (calories: number, protein: number, carbs: number, fat: number): FoodEntry => ({
     id: crypto.randomUUID(),
+    foodId: null,
     name: "x",
     quantity: 1,
     servingLabel: "1 serving",

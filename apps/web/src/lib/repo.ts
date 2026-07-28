@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Food, FoodEntry, FoodSource, MealType, Totals, User } from "@supercalorie/core";
+import type { Food, FoodEntry, FoodSource, MealType, User } from "@supercalorie/core";
 import { getDb } from "./db";
 
 /**
@@ -50,6 +50,7 @@ interface FoodRow {
 }
 
 interface EntryRow extends FoodRow {
+  food_id: string | null;
   quantity: number;
   meal: string;
   date: string;
@@ -85,6 +86,7 @@ function toFood(row: FoodRow): Food {
 function toEntry(row: EntryRow): FoodEntry {
   return {
     id: row.id,
+    foodId: row.food_id ?? null,
     name: row.name,
     quantity: row.quantity,
     servingLabel: row.serving_label,
@@ -299,14 +301,6 @@ export const entries = {
   },
 };
 
-export function sumTotals(list: FoodEntry[]): Totals {
-  return list.reduce<Totals>(
-    (acc, entry) => ({
-      calories: acc.calories + entry.calories,
-      protein: acc.protein + entry.protein,
-      carbs: acc.carbs + entry.carbs,
-      fat: acc.fat + entry.fat,
-    }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-}
+// Totals are computed by the shared domain module so the server and the
+// offline clients can never disagree about what a day adds up to.
+export { sumTotals } from "@supercalorie/core";

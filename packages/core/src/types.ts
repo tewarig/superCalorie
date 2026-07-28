@@ -51,6 +51,8 @@ export interface Food {
  */
 export interface FoodEntry {
   id: string;
+  /** The library food this came from, or null for a one-off custom entry. */
+  foodId: string | null;
   name: string;
   quantity: number;
   servingLabel: string;
