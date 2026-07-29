@@ -54,11 +54,9 @@ rendered by anything. Leave them until the web look lands, then decide.
 
 ## Now
 
-- [ ] **Macro split editor (mobile).** The model is done and tested —
-      percentages, presets, `adjustSplit` keeping the total at exactly 100,
-      `setMacroSplit` on the tracker. Nothing on screen calls any of it, so
-      the split cannot be changed from the app. This is the largest gap
-      against what was asked for.
+- [x] **Macro split editor (mobile).** `src/app/goals.tsx`, reached from the
+      Goals card on Summary. Presets plus per-macro adjustment; a pushed
+      screen rather than a fifth tab, which would have crowded the bar.
 - [ ] **Onboarding on first launch (mobile).** Sign up / Try the cloud
       instance / Skip locally, matching the web. Without it the app starts
       local-only with no way to point at a self-hosted backend. `Connection`

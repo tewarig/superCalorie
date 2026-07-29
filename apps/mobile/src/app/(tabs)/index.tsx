@@ -12,7 +12,7 @@ import { SectionHeading } from "@supercalorie/ui/section-heading";
 import { Surface } from "@supercalorie/ui/surface";
 import { Link } from "expo-router";
 import { useMemo } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
@@ -118,6 +118,21 @@ export default function SummaryScreen() {
             </View>
           </View>
         </View>
+
+        <Link asChild href="/goals">
+          <Pressable accessibilityRole="button">
+            <Surface className="flex-row items-center gap-3">
+              <View className="min-w-0 flex-1">
+                <Text className="font-bold text-base text-ink">Goals</Text>
+                <Text className="mt-0.5 font-body text-xs text-muted">
+                  {day.goal} kcal · {profile.macroSplit.protein}/{profile.macroSplit.carbs}/
+                  {profile.macroSplit.fat} split
+                </Text>
+              </View>
+              <Text className="font-display text-2xl text-moss">›</Text>
+            </Surface>
+          </Pressable>
+        </Link>
 
         <SectionHeading detail="Last 7 days" title="Calories" />
         <Surface>
