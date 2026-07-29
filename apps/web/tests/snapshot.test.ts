@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_MACRO_SPLIT,
+  SNAPSHOT_VERSION,
   emptySnapshot,
   mergeEntries,
   mergeSnapshot,
@@ -41,7 +43,7 @@ describe("JSON export and import", () => {
   it("round-trips a snapshot without losing anything", () => {
     const original = {
       ...emptySnapshot(),
-      profile: { name: "Gaurav", dailyCalorieGoal: 2400 },
+      profile: { name: "Gaurav", dailyCalorieGoal: 2400, macroSplit: DEFAULT_MACRO_SPLIT },
       entries: [entry({ id: "a", photoId: "photo-1", foodId: "lib:roti-whole-wheat" })],
       customFoods: [
         {
@@ -143,6 +145,53 @@ describe("JSON export and import", () => {
     expect(parseJSON('{"version":1,"profile":{"dailyCalorieGoal":5},"entries":[]}').profile
       .dailyCalorieGoal).toBe(800);
   });
+
+  describe("version 1 files, written before macro splits existed", () => {
+    // A real v1 export, as the app wrote them: no macroSplit anywhere.
+    const v1 = JSON.stringify({
+      version: 1,
+      profile: { name: "Gaurav", dailyCalorieGoal: 2400 },
+      entries: [
+        {
+          id: "e1",
+          name: "Masoor dal",
+          quantity: 1,
+          servingLabel: "1 bowl",
+          calories: 232,
+          protein: 14,
+          carbs: 38,
+          fat: 2,
+          meal: "lunch",
+          date: "2026-07-26",
+          createdAt: "2026-07-26T12:00:00.000Z",
+          photoId: null,
+        },
+      ],
+      customFoods: [],
+    });
+
+    it("still imports, rather than rejecting someone's history on an app update", () => {
+      const restored = parseJSON(v1);
+      expect(restored.entries).toHaveLength(1);
+      expect(restored.profile.dailyCalorieGoal).toBe(2400);
+    });
+
+    it("upgrades to the current version and fills in the default split", () => {
+      const restored = parseJSON(v1);
+      expect(restored.version).toBe(SNAPSHOT_VERSION);
+      // 30/40/30 is what a v1 file was always displayed with, so the targets
+      // do not move under the user on upgrade.
+      expect(restored.profile.macroSplit).toEqual(DEFAULT_MACRO_SPLIT);
+    });
+
+    it("round-trips back out as version 2", () => {
+      expect(JSON.parse(toJSON(parseJSON(v1))).version).toBe(2);
+    });
+  });
+
+  it("rejects a version it does not know how to read", () => {
+    expect(() => parseJSON('{"version":99,"entries":[]}')).toThrow(/Unsupported export version 99/);
+  });
 });
 
 describe("CSV export and import", () => {
@@ -230,11 +279,11 @@ describe("merging", () => {
   it("never lets an imported goal overwrite the one set on this device", () => {
     const local: Snapshot = {
       ...emptySnapshot(),
-      profile: { name: "Gaurav", dailyCalorieGoal: 2400 },
+      profile: { name: "Gaurav", dailyCalorieGoal: 2400, macroSplit: DEFAULT_MACRO_SPLIT },
     };
     const incoming: Snapshot = {
       ...emptySnapshot(),
-      profile: { name: "Someone else", dailyCalorieGoal: 1200 },
+      profile: { name: "Someone else", dailyCalorieGoal: 1200, macroSplit: DEFAULT_MACRO_SPLIT },
     };
 
     const merged = mergeSnapshot(local, incoming);
@@ -267,7 +316,7 @@ describe("merging", () => {
   it("adopts an imported name only when this device has none", () => {
     const merged = mergeSnapshot(emptySnapshot(), {
       ...emptySnapshot(),
-      profile: { name: "Gaurav", dailyCalorieGoal: 1800 },
+      profile: { name: "Gaurav", dailyCalorieGoal: 1800, macroSplit: DEFAULT_MACRO_SPLIT },
     });
 
     expect(merged.snapshot.profile.name).toBe("Gaurav");

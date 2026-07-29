@@ -71,7 +71,7 @@ export function Tracker() {
     [query, tracker.snapshot],
   );
 
-  const targets = macroTargets(day.goal);
+  const targets = macroTargets(day.goal, profile.macroSplit);
   const isToday = date === todayISO();
   const mealOptions = useMemo(
     () => MEAL_TYPES.map((type) => ({ label: MEAL_LABELS[type], value: type })),

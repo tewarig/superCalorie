@@ -52,7 +52,7 @@ export default function TodayScreen() {
     return <SafeAreaView className="flex-1 items-center justify-center bg-canvas"><ActivityIndicator color="#285B43" /></SafeAreaView>;
   }
 
-  const targets = macroTargets(day.goal);
+  const targets = macroTargets(day.goal, profile.macroSplit);
 
   function log(food: Food, quantity: number) {
     tracker.logFood(food, quantity, meal, photo);

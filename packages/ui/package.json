@@ -2,11 +2,26 @@
   "name": "@supercalorie/ui",
   "version": "0.0.1",
   "private": true,
-  "description": "superCalorie design system — shared tokens with platform-native components for React (web) and React Native (Expo).",
+  "description": "superCalorie design system \u2014 shared tokens with platform-native components for React (web) and React Native (Expo).",
   "exports": {
     "./tokens": "./src/tokens.ts",
     "./theme": "./theme.cjs",
     "./tailwind-preset": "./tailwind-preset.cjs",
+    "./activity-rings": {
+      "react-native": "./src/activity-rings/ActivityRings.native.tsx",
+      "types": "./src/activity-rings/ActivityRings.web.tsx",
+      "default": "./src/activity-rings/ActivityRings.web.tsx"
+    },
+    "./bar-chart": {
+      "react-native": "./src/bar-chart/BarChart.native.tsx",
+      "types": "./src/bar-chart/BarChart.web.tsx",
+      "default": "./src/bar-chart/BarChart.web.tsx"
+    },
+    "./heatmap": {
+      "react-native": "./src/heatmap/Heatmap.native.tsx",
+      "types": "./src/heatmap/Heatmap.web.tsx",
+      "default": "./src/heatmap/Heatmap.web.tsx"
+    },
     "./app-button": {
       "react-native": "./src/app-button/AppButton.native.tsx",
       "types": "./src/app-button/AppButton.web.tsx",
@@ -68,6 +83,10 @@
     "nativewind": "^4.2.6",
     "react": "^19",
     "react-native": "0.86.0",
+    "react-native-svg": "^15.15.5",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@supercalorie/core": "workspace:*"
   }
 }

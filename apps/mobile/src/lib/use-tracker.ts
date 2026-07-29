@@ -11,6 +11,7 @@ import {
   toJSON,
   type Food,
   type ImportResult,
+  type MacroSplit,
   type MealType,
   type Snapshot,
 } from "@supercalorie/core";
@@ -147,6 +148,13 @@ export function useTracker(date: string = todayISO()) {
     [update],
   );
 
+  const setMacroSplit = useCallback(
+    (macroSplit: MacroSplit) => {
+      update((current) => ({ ...current, profile: { ...current.profile, macroSplit } }));
+    },
+    [update],
+  );
+
   const importFile = useCallback(async (): Promise<ImportResult | null> => {
     const picked = await readImportedFile();
     if (!picked) return null;
@@ -180,6 +188,7 @@ export function useTracker(date: string = todayISO()) {
     logCustom,
     removeEntry,
     setGoal,
+    setMacroSplit,
     importFile,
     exportFile,
   };

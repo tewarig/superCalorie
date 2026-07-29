@@ -1,3 +1,4 @@
+import { DEFAULT_MACRO_SPLIT, parseMacroSplit, type MacroSplit } from "./macros";
 import type { Food, FoodEntry, MealType } from "./types";
 import { MEAL_TYPES } from "./types";
 
@@ -10,7 +11,7 @@ import { MEAL_TYPES } from "./types";
  */
 export interface Snapshot {
   /** Bumped when the shape changes, so an old file can be migrated. */
-  version: 1;
+  version: 2;
   profile: Profile;
   entries: FoodEntry[];
   /** Foods the user typed in themselves; the built-in library is not copied. */
@@ -20,14 +21,23 @@ export interface Snapshot {
 export interface Profile {
   name: string;
   dailyCalorieGoal: number;
+  /** How the goal divides between macros. Added in version 2. */
+  macroSplit: MacroSplit;
 }
 
-export const SNAPSHOT_VERSION = 1 as const;
+export const SNAPSHOT_VERSION = 2 as const;
+
+/**
+ * Versions this app can read. Anything older is upgraded on import rather
+ * than rejected — someone's year of logging should survive an app update,
+ * and the only difference in v1 is a profile field with a sane default.
+ */
+const READABLE_VERSIONS = [1, 2];
 
 export function emptySnapshot(): Snapshot {
   return {
     version: SNAPSHOT_VERSION,
-    profile: { name: "", dailyCalorieGoal: 2000 },
+    profile: { name: "", dailyCalorieGoal: 2000, macroSplit: DEFAULT_MACRO_SPLIT },
     entries: [],
     customFoods: [],
   };
@@ -62,9 +72,9 @@ export function parseJSON(text: string): Snapshot {
   if (!raw || typeof raw !== "object") throw new Error("That file isn't a superCalorie export.");
   const candidate = raw as Partial<Snapshot>;
 
-  if (candidate.version !== SNAPSHOT_VERSION) {
+  if (typeof candidate.version !== "number" || !READABLE_VERSIONS.includes(candidate.version)) {
     throw new Error(
-      `Unsupported export version ${String(candidate.version)} — this app reads version ${SNAPSHOT_VERSION}.`,
+      `Unsupported export version ${String(candidate.version)} — this app reads versions ${READABLE_VERSIONS.join(" and ")}.`,
     );
   }
   if (!Array.isArray(candidate.entries)) throw new Error("That export has no entries list.");
@@ -74,6 +84,9 @@ export function parseJSON(text: string): Snapshot {
     profile: {
       name: typeof candidate.profile?.name === "string" ? candidate.profile.name : "",
       dailyCalorieGoal: clampGoal(candidate.profile?.dailyCalorieGoal),
+      // A v1 file has no split; parseMacroSplit returns the default for it,
+      // which is the same 30/40/30 those exports were always displayed with.
+      macroSplit: parseMacroSplit(candidate.profile?.macroSplit),
     },
     entries: candidate.entries.map(normaliseEntry).filter((e): e is FoodEntry => e !== null),
     customFoods: Array.isArray(candidate.customFoods)
@@ -243,6 +256,7 @@ export function mergeSnapshot(current: Snapshot, incoming: Snapshot): ImportResu
       profile: {
         name: current.profile.name || incoming.profile.name,
         dailyCalorieGoal: current.profile.dailyCalorieGoal,
+        macroSplit: current.profile.macroSplit,
       },
       customFoods: [
         ...current.customFoods,

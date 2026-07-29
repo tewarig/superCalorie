@@ -19,7 +19,7 @@ module.exports = {
   // v8 measures what actually executed, and it matches the web app's setup.
   coverageProvider: "v8",
   collectCoverageFrom: [
-    "packages/ui/src/{app-button,calorie-dial,food-row,section-heading,segmented-control,surface}/**/*.{ts,tsx}",
+    "packages/ui/src/{activity-rings,app-button,bar-chart,calorie-dial,food-row,heatmap,section-heading,segmented-control,surface}/**/*.{ts,tsx}",
     "!**/*.stories.tsx",
     // The web builds are React DOM. This runner cannot render them, so
     // measuring them here would report a gap it has no way to close.
