@@ -33,7 +33,22 @@ jobs:
       # a developer installed.
       - run: pnpm install --frozen-lockfile
 
+      # `test` runs with --coverage and fails below 100%, so this is the
+      # coverage gate as well as the test gate.
       - run: pnpm turbo run typecheck lint test build
+
+      - name: Publish the coverage summary
+        if: always()
+        run: |
+          if [ -f apps/web/coverage/coverage-summary.json ]; then
+            node -e "
+              const t = require('./apps/web/coverage/coverage-summary.json').total;
+              const row = (k) => \`| \${k} | \${t[k].pct}% | \${t[k].covered}/\${t[k].total} |\`;
+              console.log('| Metric | % | Covered |');
+              console.log('| --- | --- | --- |');
+              for (const k of ['statements','branches','functions','lines']) console.log(row(k));
+            " >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   docker:
     name: Docker image builds

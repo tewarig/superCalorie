@@ -101,5 +101,8 @@ function isRelevant(name: string, query: string): boolean {
 
 function splitProviderId(id: string): [string, string] {
   const separator = id.indexOf(":");
+  /* v8 ignore next -- both providers build their ids with a prefix, so a
+     bare id never reaches this; the fallback is here so a future provider
+     that forgets degrades instead of producing an empty external_id. */
   return separator === -1 ? ["library", id] : [id.slice(0, separator), id.slice(separator + 1)];
 }

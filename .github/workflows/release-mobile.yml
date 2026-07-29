@@ -5,9 +5,18 @@ name: Release mobile
 # image publish.
 #
 # Requires the EXPO_TOKEN secret (expo.dev → Account → Access tokens).
-# iOS additionally needs a paid Apple Developer account with credentials
-# stored in EAS; without one, the preview profile still produces a Simulator
-# build and an installable Android APK.
+#
+# What each profile yields, and what it needs:
+#
+#   development         debug build with the dev client. Android: APK.
+#                       iOS: Simulator build.            Expo account only.
+#   preview             release build. Android: installable APK.
+#                       iOS: Simulator build.            Expo account only.
+#   preview-ios-device  a real .ipa for an iPhone.       Paid Apple account.
+#   production          Play AAB / App Store IPA.        Paid Apple account.
+#
+# Apple requires code signing for anything installed on a device, so an IPA
+# is the one artifact that cannot be produced from a free account.
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +25,7 @@ on:
         required: true
         default: preview
         type: choice
-        options: [preview, production]
+        options: [development, preview, preview-ios-device, production]
       platform:
         description: "Platform to build"
         required: true
@@ -34,7 +43,9 @@ permissions:
 jobs:
   build:
     name: EAS build
-    runs-on: ubuntu-latest
+    # iOS builds need Xcode, which only exists on the macOS runners; Android
+    # is far cheaper on Linux, so the platform picks the machine.
+    runs-on: ${{ (inputs.platform == 'android' && 'ubuntu-latest') || 'macos-latest' }}
     timeout-minutes: 60
 
     steps:

@@ -22,6 +22,8 @@ export const ALLOWED_TYPES: Record<string, string> = {
 };
 
 function pathFor(id: string, contentType: string): string {
+  /* v8 ignore next -- the upload route rejects any type not in ALLOWED_TYPES
+     before a path is ever built, so "bin" is belt-and-braces. */
   return join(PHOTO_DIR, `${id}.${ALLOWED_TYPES[contentType] ?? "bin"}`);
 }
 

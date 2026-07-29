@@ -16,6 +16,9 @@ import { SEED_FOODS } from "@supercalorie/core";
  * reuse one connection instead of leaking a new one per reload.
  */
 
+/* v8 ignore next 2 -- the default only applies when DATABASE_PATH is unset,
+   which never happens under test; covering it would mean writing a database
+   into the repository. */
 const DB_PATH = process.env.DATABASE_PATH ?? resolve(process.cwd(), ".data/supercalorie.db");
 
 function connect(): DatabaseSync {
@@ -138,6 +141,8 @@ function seedFoods(database: DatabaseSync) {
  * one volume holds all state. `:memory:` has no directory of its own, so
  * fall back to the conventional location.
  */
+/* v8 ignore next 5 -- same reason: the suite always sets PHOTO_DIR, so the
+   derived-path branches are unreachable here. */
 export const PHOTO_DIR =
   process.env.PHOTO_DIR ??
   (DB_PATH === ":memory:"

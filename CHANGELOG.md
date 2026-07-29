@@ -33,7 +33,20 @@ no notes is worse than a delayed one.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Debug and release build profiles for both platforms. `development` gives a
+  debug build with the dev client, `preview` an installable Android APK, and
+  `preview-ios-device` a real `.ipa` — the last needs a paid Apple Developer
+  account, since Apple requires signing for anything installed on a device.
+
+### Changed
+
+- Tests now run with coverage and **fail below 100%** on statements,
+  branches, functions, and lines. Closing the gaps added tests for photo
+  upload and retrieval, bulk export/import, the schema migration, session
+  expiry, provider retry and timeout behaviour, and malformed request bodies
+  — none of which had any coverage before.
 
 ## [0.1.0] - 2026-07-29
 

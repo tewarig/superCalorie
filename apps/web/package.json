@@ -8,8 +8,9 @@
     "start": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest run",
-    "test:watch": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest"
+    "test": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest run --coverage",
+    "test:watch": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest",
+    "test:fast": "node ../../scripts/require-node.mjs && NODE_OPTIONS=--experimental-sqlite vitest run"
   },
   "dependencies": {
     "@supercalorie/core": "workspace:*",
@@ -26,6 +27,7 @@
     "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",

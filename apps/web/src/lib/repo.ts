@@ -79,6 +79,8 @@ function toFood(row: FoodRow): Food {
     protein: row.protein,
     carbs: row.carbs,
     fat: row.fat,
+    /* v8 ignore next -- `source` is NOT NULL DEFAULT 'library', and the
+       migration backfills it, so a null cannot reach here. */
     source: (row.source ?? "library") as FoodSource,
   };
 }

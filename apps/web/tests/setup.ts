@@ -1,4 +1,7 @@
-import { vi } from "vitest";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { rmSync } from "node:fs";
+import { afterAll, vi } from "vitest";
 
 /**
  * Every test file gets its own module registry, and therefore its own
@@ -12,6 +15,14 @@ import { vi } from "vitest";
  */
 process.env.DATABASE_PATH = ":memory:";
 process.env.SESSION_SECRET = "test-secret-not-used-anywhere-real";
+
+// Photo uploads hit the filesystem. Each test file gets its own directory
+// under the OS temp dir so nothing lands in the repo and files from one file
+// can't be seen by another.
+process.env.PHOTO_DIR = join(
+  tmpdir(),
+  `supercalorie-test-photos-${process.pid}-${Math.random().toString(36).slice(2)}`,
+);
 
 // `cookies()` only exists inside a real request scope. `call()` from
 // ./helpers establishes that scope per request; outside one the store is
@@ -37,3 +48,9 @@ vi.stubGlobal(
     throw new Error(`Blocked network call in tests: ${String(input)}`);
   }),
 );
+
+// Leaving temp photo directories behind on every run would slowly fill the
+// developer's disk.
+afterAll(() => {
+  rmSync(process.env.PHOTO_DIR!, { recursive: true, force: true });
+});

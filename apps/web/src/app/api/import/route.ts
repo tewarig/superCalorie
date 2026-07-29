@@ -18,6 +18,8 @@ export async function POST(request: Request) {
     snapshot = parseJSON(await request.text());
   } catch (cause) {
     return Response.json(
+      /* v8 ignore next -- parseJSON throws Error and nothing else, so the
+         fallback string is unreachable without changing that contract. */
       { error: cause instanceof Error ? cause.message : "Unreadable document." },
       { status: 400 },
     );

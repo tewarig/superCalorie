@@ -72,6 +72,14 @@ describe("JSON export and import", () => {
     expect(() => parseJSON(text)).toThrow(new RegExp(message.replace(/[.'"]/g, ".")));
   });
 
+  it.each([
+    ["null", "null"],
+    ["a bare number", "42"],
+    ["a quoted string", '"just a string"'],
+  ])("rejects valid JSON that isn't an export at all (%s)", (_label, text) => {
+    expect(() => parseJSON(text)).toThrow(/superCalorie export/);
+  });
+
   it("survives a hand-edited file with junk in it", () => {
     const restored = parseJSON(
       JSON.stringify({
@@ -91,6 +99,42 @@ describe("JSON export and import", () => {
     // An unknown meal lands in snacks rather than corrupting the day view.
     expect(restored.entries[1].meal).toBe("snack");
     expect(restored.profile.dailyCalorieGoal).toBe(2000);
+  });
+
+  it("fills in defaults for an entry that carries only the essentials", () => {
+    const restored = parseJSON(
+      JSON.stringify({
+        version: 1,
+        // The minimum normaliseEntry accepts: an id, a date, and a number.
+        entries: [{ id: "bare", date: "2026-07-26", calories: 250 }],
+      }),
+    );
+
+    expect(restored.entries[0]).toMatchObject({
+      id: "bare",
+      foodId: null,
+      name: "Imported entry",
+      quantity: 1,
+      servingLabel: "1 serving",
+      calories: 250,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      meal: "snack",
+      photoId: null,
+    });
+    // Stamped now, since the file didn't say when it was logged.
+    expect(restored.entries[0].createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("rejects an entry whose calories aren't a number at all", () => {
+    const restored = parseJSON(
+      JSON.stringify({
+        version: 1,
+        entries: [{ id: "nan", date: "2026-07-26", calories: "banana" }],
+      }),
+    );
+    expect(restored.entries).toEqual([]);
   });
 
   it("clamps an absurd calorie goal instead of trusting the file", () => {
@@ -149,6 +193,12 @@ describe("CSV export and import", () => {
     });
   });
 
+  it("refuses an empty file rather than silently importing nothing", () => {
+    expect(() => parseCSV("", makeId)).toThrow(/empty/i);
+    // Whitespace-only is the same thing to a person.
+    expect(() => parseCSV("\n\n  \n", makeId)).toThrow(/empty/i);
+  });
+
   it("refuses a file missing the columns it needs", () => {
     expect(() => parseCSV("name,protein\nRoti,6", makeId)).toThrow(/date.*calories/);
   });
@@ -191,6 +241,27 @@ describe("merging", () => {
 
     expect(merged.snapshot.profile.dailyCalorieGoal).toBe(2400);
     expect(merged.snapshot.profile.name).toBe("Gaurav");
+  });
+
+  it("brings in custom foods without duplicating ones already known", () => {
+    const mine = {
+      id: "custom-1",
+      name: "Mum's dal",
+      servingLabel: "1 bowl",
+      calories: 210,
+      protein: 11,
+      carbs: 28,
+      fat: 6,
+      source: "library" as const,
+    };
+    const theirs = { ...mine, id: "custom-2", name: "Dad's dal" };
+
+    const local: Snapshot = { ...emptySnapshot(), customFoods: [mine] };
+    const incoming: Snapshot = { ...emptySnapshot(), customFoods: [mine, theirs] };
+
+    const merged = mergeSnapshot(local, incoming);
+
+    expect(merged.snapshot.customFoods.map((f) => f.id)).toEqual(["custom-1", "custom-2"]);
   });
 
   it("adopts an imported name only when this device has none", () => {

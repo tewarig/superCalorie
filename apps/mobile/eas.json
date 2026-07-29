@@ -4,24 +4,48 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "//": "What each profile produces, and what it costs to run. Only the last one needs a paid Apple Developer account.",
+
     "development": {
+      "//": "Debug build with the dev client attached — hot reload, dev menu, React DevTools. Android gives an installable APK; iOS gives a Simulator build unless credentials exist.",
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Debug"
+      }
     },
+
     "preview": {
+      "//": "Release build, no dev tooling, still sideloadable. This is the one to hand someone to try.",
       "distribution": "internal",
       "channel": "preview",
       "android": {
-        "// buildType": "APK rather than the default AAB — an AAB cannot be sideloaded, and a release attachment people can actually install is the point.",
+        "//": "APK, not the default AAB — an AAB cannot be installed directly, and a release attachment people can actually open is the point.",
         "buildType": "apk"
       },
       "ios": {
-        "// simulator": "Builds without an Apple Developer account, but only runs in the Simulator. Drop this to produce an installable IPA (needs a paid account and credentials in EAS).",
+        "//": "Runs in the iOS Simulator and needs no Apple account. Remove `simulator` to get a device-installable IPA, which does need one.",
         "simulator": true
       }
     },
+
+    "preview-ios-device": {
+      "//": "An actual .ipa for a real iPhone. Requires a paid Apple Developer account ($99/yr) with credentials in EAS — Apple requires code signing for device installs and there is no way around it.",
+      "extends": "preview",
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
+    },
+
     "production": {
+      "//": "Store submission: an AAB for Play and a signed IPA for App Store Connect.",
       "channel": "production",
       "android": {
         "buildType": "app-bundle"
