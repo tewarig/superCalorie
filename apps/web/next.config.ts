@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
   // @supercalorie/* packages and pnpm's symlinked store, and the container
   // dies on a missing module at runtime rather than at build time.
   outputFileTracingRoot: join(here, "../.."),
+
+  // Coverage output sits under the traced root, so a build that follows a
+  // test run tries to copy its temp files into the standalone bundle and
+  // warns when they vanish mid-trace. Nothing at runtime needs them.
+  outputFileTracingExcludes: {
+    "*": ["**/coverage/**", "**/.turbo/**", "**/*.test.*", "**/tests/**"],
+  },
 };
 
 export default nextConfig;
