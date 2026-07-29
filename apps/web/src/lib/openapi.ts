@@ -11,7 +11,7 @@
  * break an existing integration.
  */
 
-export const API_VERSION = "0.3.0";
+export const API_VERSION = "0.4.0";
 
 const error = {
   type: "object",
@@ -258,7 +258,9 @@ export const openApiDocument = {
     "/api/entries": {
       get: {
         tags: ["Entries"],
-        summary: "One day of logging",
+        summary: "One day of logging, or everything changed since a time",
+        description:
+          "With `since`, returns entries written at or after that moment plus tombstones for anything deleted, for a client catching up. The window is inclusive: timestamps are millisecond resolution, and skipping the boundary would lose entries permanently, whereas re-sending it is harmless because clients merge by id. `since` takes precedence over `date`.",
         parameters: [
           {
             name: "date",
@@ -268,9 +270,21 @@ export const openApiDocument = {
             description: "Defaults to the server's today. Send yours to avoid timezone drift.",
             example: "2026-07-26",
           },
+          {
+            name: "since",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "date-time" },
+            description:
+              "Sync watermark. Use the `syncedAt` from the previous response rather than your own clock.",
+            example: "2026-07-26T18:00:00.000Z",
+          },
         ],
         responses: {
-          "200": jsonResponse("The day, with totals.", ref("DaySummary")),
+          "200": jsonResponse("The day, with totals — or the changes since `since`.", {
+            oneOf: [ref("DaySummary"), ref("SyncChanges")],
+          }),
+          "400": errorResponses["400"],
           "401": errorResponses["401"],
         },
       },
@@ -557,6 +571,31 @@ export const openApiDocument = {
           macroSplit: ref("MacroSplit"),
           createdAt: { type: "string", format: "date-time" },
         },
+      },
+      SyncChanges: {
+        type: "object",
+        description: "Everything that changed since a watermark.",
+        properties: {
+          since: { type: "string", format: "date-time" },
+          entries: { type: "array", items: ref("FoodEntry") },
+          deletions: { type: "array", items: ref("Deletion") },
+          syncedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Watermark for the next call, from the server's clock rather than yours.",
+          },
+        },
+        required: ["since", "entries", "deletions", "syncedAt"],
+      },
+      Deletion: {
+        type: "object",
+        description:
+          "A tombstone. Kept after the entry is gone so a device still holding it does not re-upload it and undo the delete.",
+        properties: {
+          id: { type: "string", description: "The id of the entry that was deleted." },
+          deletedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "deletedAt"],
       },
       MacroSplit: {
         type: "object",

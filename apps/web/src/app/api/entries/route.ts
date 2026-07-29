@@ -5,12 +5,41 @@ import { entries, foods, photos, sumTotals } from "@/lib/repo";
 const isValidDate = (value: unknown): value is string =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-/** GET /api/entries?date=YYYY-MM-DD — one day of logging, with totals. */
+/**
+ * GET /api/entries — one day of logging, or everything changed since a time.
+ *
+ * `?date=YYYY-MM-DD` is the day view. `?since=<ISO timestamp>` is the sync
+ * view: entries created after that moment plus the tombstones for anything
+ * deleted since, which is what lets a client catch up without re-downloading
+ * a year of logging. The two are mutually exclusive; `since` wins.
+ */
 export async function GET(request: Request) {
   const user = await getSessionUser(request);
   if (!user) return Response.json({ error: "Not authenticated." }, { status: 401 });
 
-  const requested = new URL(request.url).searchParams.get("date");
+  const params = new URL(request.url).searchParams;
+  const since = params.get("since");
+
+  if (since !== null) {
+    // Rejected rather than ignored: a malformed timestamp silently treated as
+    // "everything" would look like a working sync that re-sends the world.
+    if (Number.isNaN(Date.parse(since))) {
+      return Response.json(
+        { error: "`since` must be an ISO 8601 timestamp." },
+        { status: 400 },
+      );
+    }
+    return Response.json({
+      since,
+      entries: entries.changedSince(user.id, since),
+      deletions: entries.deletions(user.id, since),
+      // Echoed so the client has a watermark that came from the server's
+      // clock rather than its own, which may be skewed.
+      syncedAt: new Date().toISOString(),
+    });
+  }
+
+  const requested = params.get("date");
   const date = isValidDate(requested) ? requested : todayISO();
 
   const list = entries.forDay(user.id, date);

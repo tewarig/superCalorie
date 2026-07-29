@@ -120,6 +120,18 @@ function migrate(database: DatabaseSync) {
   }
 
   database.exec(`
+    -- Tombstones. A deleted entry has to leave a trace, or a device that
+    -- still holds it re-uploads it on the next sync and the delete undoes
+    -- itself. Rows are keyed by the entry id they replace, so re-deleting is
+    -- idempotent.
+    CREATE TABLE IF NOT EXISTS entry_deletions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      deleted_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_deletions_user ON entry_deletions(user_id, deleted_at);
+
     CREATE TABLE IF NOT EXISTS photos (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

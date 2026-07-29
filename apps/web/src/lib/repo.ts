@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   parseMacroSplit,
+  type Deletion,
   type Food,
   type FoodEntry,
   type FoodSource,
@@ -66,6 +67,11 @@ interface FoodRow {
   fat: number;
   source: string;
   external_id: string | null;
+}
+
+interface DeletionRow {
+  id: string;
+  deleted_at: string;
 }
 
 interface EntryRow extends FoodRow {
@@ -478,8 +484,58 @@ export const entries = {
   },
 
   remove(userId: string, id: string): boolean {
-    const result = getDb().prepare("DELETE FROM entries WHERE id = ? AND user_id = ?").run(id, userId);
-    return Number(result.changes) > 0;
+    const database = getDb();
+    const result = database
+      .prepare("DELETE FROM entries WHERE id = ? AND user_id = ?")
+      .run(id, userId);
+
+    if (Number(result.changes) === 0) return false;
+
+    // Recorded only when a row was actually removed, so a repeated or
+    // mistaken delete cannot tombstone an id this user never owned.
+    database
+      .prepare(
+        "INSERT OR REPLACE INTO entry_deletions (id, user_id, deleted_at) VALUES (?, ?, ?)",
+      )
+      .run(id, userId, new Date().toISOString());
+    return true;
+  },
+
+  /** Tombstones for a user, oldest first, optionally only recent ones. */
+  deletions(userId: string, since?: string): Deletion[] {
+    const rows = since
+      ? all<DeletionRow>(
+          "SELECT id, deleted_at FROM entry_deletions WHERE user_id = ? AND deleted_at >= ? ORDER BY deleted_at",
+          userId,
+          since,
+        )
+      : all<DeletionRow>(
+          "SELECT id, deleted_at FROM entry_deletions WHERE user_id = ? ORDER BY deleted_at",
+          userId,
+        );
+    return rows.map((row) => ({ id: row.id, deletedAt: row.deleted_at }));
+  },
+
+  /**
+   * Entries created at or after `since`, for a client catching up.
+   *
+   * Filters on created_at rather than date: `date` is the day the food was
+   * eaten, which a client can backdate, so a late entry for last Tuesday
+   * would be missed by a query that ordered on it.
+   *
+   * Inclusive on purpose. Timestamps are millisecond resolution, and two
+   * entries logged in the same millisecond as the watermark are ordinary —
+   * with a strict `>` they would be skipped and never offered again, which is
+   * silent data loss. Re-sending the boundary is harmless because the client
+   * merges by id and drops what it already holds. Given the choice, resend
+   * rather than lose.
+   */
+  changedSince(userId: string, since: string): FoodEntry[] {
+    return all<EntryRow>(
+      "SELECT * FROM entries WHERE user_id = ? AND created_at >= ? ORDER BY created_at",
+      userId,
+      since,
+    ).map(toEntry);
   },
 };
 
