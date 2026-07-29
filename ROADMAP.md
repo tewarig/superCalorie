@@ -74,6 +74,16 @@ rendered by anything. Leave them until the web look lands, then decide.
       settable through `PATCH /api/auth/me`, carried by `/api/export`. API
       version 0.3.0. The apps do not call it yet — mobile has no login at
       all, which is the prerequisite below.
+- [ ] **Offline-first sync (mobile).** The app already works fully offline —
+      the on-device snapshot is the source of truth and every screen reads it.
+      What is missing is reconciling that with a server when one is
+      configured. Sketch, so this is not redesigned from scratch: entries are
+      already immutable rows with a stable UUID and a `createdAt`, and
+      `mergeEntries` already dedupes by id, so a first cut is push-new,
+      pull-since, last-write-wins on the profile, with deletions needing a
+      tombstone the model does not yet carry. Server-side it is a
+      `GET /api/entries?since=` plus a bulk `POST`. Mobile only — the web
+      talks to the server directly and is second-class.
 - [ ] **Log in from the app.** Nothing in `apps/mobile` authenticates: no
       sign-in screen, no token storage. `client.ts` and the bearer token in
       `AuthResult` were designed for it. This blocks publishing and any

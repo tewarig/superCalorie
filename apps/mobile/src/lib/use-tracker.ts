@@ -16,7 +16,7 @@ import {
   type Snapshot,
 } from "@supercalorie/core";
 import { randomUUID } from "expo-crypto";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import {
   deletePhoto,
   loadSnapshot,
@@ -48,29 +48,67 @@ function extensionFor(photo: PickedPhoto): string {
   return photo.mimeType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
 }
 
+/* -------------------------------------------------------------------------
+ * One snapshot, shared by every screen.
+ *
+ * This used to be useState inside the hook, which gave each screen its own
+ * private copy: logging a meal on one tab left every other tab showing the
+ * state it had loaded with, and Summary looked like it had lost the entry.
+ * The data was on disk the whole time — only the screen was stale.
+ *
+ * A module-level store read through useSyncExternalStore means all screens
+ * see one value and all of them re-render when it changes.
+ * ---------------------------------------------------------------------- */
+
+let current: Snapshot = emptySnapshot();
+let loaded = false;
+let loading: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): Snapshot {
+  return current;
+}
+
+function getReady(): boolean {
+  return loaded;
+}
+
+/** Loads once per app session, however many screens ask for it. */
+function ensureLoaded(): Promise<void> {
+  loading ??= loadSnapshot().then((stored) => {
+    current = stored;
+    loaded = true;
+    emit();
+  });
+  return loading;
+}
+
+function setSnapshot(next: Snapshot) {
+  current = next;
+  saveSnapshot(next);
+  emit();
+}
+
 /** Local-first data layer for the mobile app. No account, no server. */
 export function useTracker(date: string = todayISO()) {
-  const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
-  const [ready, setReady] = useState(false);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const ready = useSyncExternalStore(subscribe, getReady, getReady);
 
   useEffect(() => {
-    let cancelled = false;
-    loadSnapshot().then((loaded) => {
-      if (cancelled) return;
-      setSnapshot(loaded);
-      setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void ensureLoaded();
   }, []);
 
   const update = useCallback((change: (current: Snapshot) => Snapshot) => {
-    setSnapshot((current) => {
-      const next = change(current);
-      saveSnapshot(next);
-      return next;
-    });
+    setSnapshot(change(current));
   }, []);
 
   const logFood = useCallback(
@@ -172,14 +210,11 @@ export function useTracker(date: string = todayISO()) {
     const isCsv =
       picked.name.toLowerCase().endsWith(".csv") || !picked.text.trimStart().startsWith("{");
 
-    let result: ImportResult | null = null;
-    setSnapshot((current) => {
-      result = isCsv
-        ? mergeEntries(current, parseCSV(picked.text, randomId))
-        : mergeSnapshot(current, parseJSON(picked.text));
-      saveSnapshot(result.snapshot);
-      return result.snapshot;
-    });
+    const result = isCsv
+      ? mergeEntries(current, parseCSV(picked.text, randomId))
+      : mergeSnapshot(current, parseJSON(picked.text));
+
+    setSnapshot(result.snapshot);
     return result;
   }, []);
 

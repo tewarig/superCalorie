@@ -86,8 +86,21 @@ export default function SummaryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
+      {/* Floats over the scroll rather than sitting in it, so logging is one
+          tap from anywhere on the screen. Placed top-left as asked; bottom
+          right is the easier reach one-handed if that turns out to matter. */}
+      <Link asChild href="/log">
+        <Pressable
+          accessibilityLabel="Log food"
+          accessibilityRole="button"
+          className="absolute left-5 top-2 z-10 h-14 w-14 items-center justify-center rounded-full bg-moss shadow-lg"
+        >
+          <Text className="font-display text-3xl text-paper">+</Text>
+        </Pressable>
+      </Link>
+
       <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2">
-        <View>
+        <View className="ml-16">
           <Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">
             {formatDateLabel(today)}
           </Text>

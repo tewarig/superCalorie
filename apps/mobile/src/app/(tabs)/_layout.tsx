@@ -6,14 +6,13 @@ import { colors } from "@/lib/theme";
 /**
  * The four tabs, in the order they are reached for.
  *
- * Summary is home. Log gets its own tab rather than living behind a button on
- * Summary because it is the thing people open the app to do, and burying the
- * primary action one scroll down is what made the old single screen read like
- * a to-do list.
+ * Summary is home, and logging is reached from the button floating over it
+ * rather than from a fourth tab — the two were showing the same day and
+ * splitting them made you switch tabs to see the effect of what you had just
+ * logged.
  */
 const TABS = [
   { name: "index", title: "Summary", symbol: "circle.hexagongrid.fill", fallback: "◎" },
-  { name: "log", title: "Log", symbol: "plus.circle.fill", fallback: "＋" },
   { name: "trends", title: "Trends", symbol: "chart.bar.fill", fallback: "▥" },
   { name: "sharing", title: "Sharing", symbol: "person.2.fill", fallback: "👥" },
 ] as const;

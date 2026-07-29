@@ -11,6 +11,7 @@ import {
   type Food,
   type MealType,
 } from "@supercalorie/core";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -88,6 +89,20 @@ export default function TodayScreen() {
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
       <ScrollView contentContainerClassName="gap-4 px-5 pb-14 pt-3" keyboardShouldPersistTaps="handled">
+        {/* Pushed over Summary, so it needs its own way out — there is no tab
+            bar to fall back to any more. */}
+        <View className="flex-row justify-end">
+          <Pressable
+            accessibilityLabel="Done logging"
+            accessibilityRole="button"
+            className="rounded-full bg-moss-pale px-4 py-2"
+            hitSlop={8}
+            onPress={() => router.back()}
+          >
+            <Text className="font-bold text-sm text-moss">Done</Text>
+          </Pressable>
+        </View>
+
         <View className="flex-row items-center justify-between">
           <Pressable accessibilityRole="button" accessibilityLabel="Previous day" className="h-11 w-11 items-center justify-center rounded-full bg-moss-pale" hitSlop={8} onPress={() => setDate(shiftDate(date, -1))}><Text className="font-display text-2xl text-moss">‹</Text></Pressable>
           <View className="items-center"><Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">Food journal</Text><Text className="mt-1 font-display text-xl text-ink">{formatDateLabel(date)}</Text></View>
