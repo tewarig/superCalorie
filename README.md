@@ -130,6 +130,28 @@ npx @hey-api/openapi-ts -i http://localhost:3000/api/openapi.json -o ./generated
 
 `/api/export` returns the same shape the apps store locally, so a server export imports straight into a device and back again. Storing data here never costs you the ability to take it elsewhere.
 
+### Self-hosting
+
+The backend ships as a container — non-root, ~212 MB, with the database and
+photos on a volume so a redeploy doesn't wipe every account.
+
+```sh
+echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
+docker compose up -d
+```
+
+Or pull a published image instead of building (amd64 and arm64):
+
+```sh
+docker run -d -p 3000:3000 -v supercalorie-data:/data \
+  -e SESSION_SECRET=$(openssl rand -hex 32) \
+  ghcr.io/tewarig/supercalorie:latest
+```
+
+**Back up the `/data` volume.** It holds the database and every photo; the
+image contains nothing of yours. `GET /api/export` is the other half of that
+— one request for everything, in a format the apps can read back.
+
 Copy `apps/web/.env.example` to `.env.local`. **`SESSION_SECRET` is required in production** — the app refuses to boot without it. In development a secret is generated once and cached in `.data/` so restarts don't log you out.
 
 `DATABASE_PATH` overrides where the SQLite file lives, and accepts `:memory:` for an ephemeral database.
@@ -191,6 +213,40 @@ Two behaviours are pinned by tests specifically because they're easy to regress 
 - **Deletes are user-scoped.** `DELETE /api/entries/:id` filters on `user_id` as well as `id`, so one account cannot delete another's entries.
 
 Not yet covered: React components, and the Expo app (no test runner in `apps/mobile`).
+
+## Releases
+
+Versions follow [semver](https://semver.org), and three things version
+separately on purpose: the release (git tags `vX.Y.Z`), the API contract
+(`info.version` in the spec), and the export format (`version` in a
+`Snapshot`). Integrations pin the API version, not the release — most
+releases don't touch the contract, and coupling them would force integrators
+to re-check something that never moved.
+
+Cutting one is pushing a tag:
+
+```sh
+git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
+```
+
+That runs [`release.yml`](.github/workflows/release.yml): it verifies the
+tree, publishes multi-arch images to GHCR, and opens a GitHub release from
+the matching [CHANGELOG.md](CHANGELOG.md) section — failing if that section
+is missing, because a release with no notes is worse than a late one.
+
+Mobile binaries are a separate, manual workflow
+([`release-mobile.yml`](.github/workflows/release-mobile.yml)), since they
+need an Expo account and take far longer than an image build. It produces an
+installable Android APK and can attach artifacts to a release. iOS needs a
+paid Apple Developer account with credentials in EAS; without one the preview
+profile still yields a Simulator build.
+
+| Secret / variable | Needed for |
+| --- | --- |
+| `EXPO_TOKEN` (secret) | any mobile build |
+| `EXPO_PUBLIC_API_URL` (variable) | pointing a build at your backend |
+
+`GITHUB_TOKEN` is provided automatically and covers both GHCR and releases.
 
 ## Deploying
 

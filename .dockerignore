@@ -1,0 +1,36 @@
+# Installed inside the image from the lockfile, never copied in — copying
+# host node_modules would drag in darwin-arm64 binaries and bloat the context.
+node_modules
+**/node_modules
+
+# Build output
+.next
+**/.next
+.turbo
+**/.turbo
+dist
+**/dist
+out
+**/out
+
+# Local state that must never end up in an image layer
+.data
+**/.data
+.env
+.env.*
+!.env.example
+
+# Native projects, only produced by expo prebuild
+apps/mobile/ios
+apps/mobile/android
+.expo
+**/.expo
+
+# Not needed to build the server
+.git
+.github
+*.md
+!README.md
+.vscode
+.idea
+.DS_Store

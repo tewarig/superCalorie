@@ -1,0 +1,96 @@
+name: Release mobile
+
+# Mobile builds are split from the backend release because they need an Expo
+# account and take far longer, so a broken app build must not hold up an
+# image publish.
+#
+# Requires the EXPO_TOKEN secret (expo.dev → Account → Access tokens).
+# iOS additionally needs a paid Apple Developer account with credentials
+# stored in EAS; without one, the preview profile still produces a Simulator
+# build and an installable Android APK.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "EAS build profile"
+        required: true
+        default: preview
+        type: choice
+        options: [preview, production]
+      platform:
+        description: "Platform to build"
+        required: true
+        default: android
+        type: choice
+        options: [android, ios, all]
+      attach_to_tag:
+        description: "Optional tag to attach artifacts to, e.g. v0.2.0"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: EAS build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check the Expo token is present
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN is not set. Create one at https://expo.dev under" >&2
+            echo "Account → Access tokens, then add it as a repository secret." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: pnpm install --frozen-lockfile
+
+      # --local keeps the build on this runner, so the artifact is a file we
+      # can attach rather than a URL on Expo's servers that expires.
+      - name: Build
+        working-directory: apps/mobile
+        env:
+          PROFILE: ${{ inputs.profile }}
+          PLATFORM: ${{ inputs.platform }}
+          # Baked into the binary. Point it at wherever the backend is
+          # deployed; the app still works offline without it.
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+        run: |
+          eas build \
+            --profile "$PROFILE" \
+            --platform "$PLATFORM" \
+            --local \
+            --non-interactive \
+            --output "$GITHUB_WORKSPACE/artifacts/supercalorie"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supercalorie-${{ inputs.platform }}-${{ inputs.profile }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to the release
+        if: inputs.attach_to_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Through env rather than inlined: a workflow input is free text.
+          TAG: ${{ inputs.attach_to_tag }}
+        run: gh release upload "$TAG" artifacts/* --clobber
