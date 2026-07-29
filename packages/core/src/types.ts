@@ -88,17 +88,4 @@ export interface AuthResult {
   token: string;
 }
 
-/**
- * Macro targets derived from the calorie goal using a conventional
- * 30/40/30 split (protein/carbs/fat) at 4/4/9 kcal per gram. Users can't
- * set these independently yet, so deriving them keeps the two numbers
- * from ever disagreeing.
- */
-export function macroTargets(dailyCalorieGoal: number): Totals {
-  return {
-    calories: dailyCalorieGoal,
-    protein: Math.round((dailyCalorieGoal * 0.3) / 4),
-    carbs: Math.round((dailyCalorieGoal * 0.4) / 4),
-    fat: Math.round((dailyCalorieGoal * 0.3) / 9),
-  };
-}
+// macroTargets lives in ./macros now, next to the split it reads from.

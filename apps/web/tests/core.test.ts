@@ -1,14 +1,14 @@
-import { formatDateLabel, macroTargets, todayISO, type FoodEntry } from "@supercalorie/core";
+import { DEFAULT_MACRO_SPLIT, formatDateLabel, macroTargets, todayISO, type FoodEntry } from "@supercalorie/core";
 import { describe, expect, it } from "vitest";
 import { sumTotals } from "@/lib/repo";
 
 describe("macroTargets", () => {
   it("splits the calorie goal 30/40/30 at 4/4/9 kcal per gram", () => {
-    expect(macroTargets(2000)).toEqual({ calories: 2000, protein: 150, carbs: 200, fat: 67 });
+    expect(macroTargets(2000, DEFAULT_MACRO_SPLIT)).toEqual({ calories: 2000, protein: 150, carbs: 200, fat: 67 });
   });
 
   it("stays internally consistent — the grams reconstruct the goal", () => {
-    const { protein, carbs, fat } = macroTargets(2500);
+    const { protein, carbs, fat } = macroTargets(2500, DEFAULT_MACRO_SPLIT);
     const reconstructed = protein * 4 + carbs * 4 + fat * 9;
     // Rounding to whole grams costs a few kcal at most.
     expect(Math.abs(reconstructed - 2500)).toBeLessThan(10);
