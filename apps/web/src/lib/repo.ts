@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { Food, FoodEntry, FoodSource, MealType, User } from "@supercalorie/core";
+import type {
+  Food,
+  FoodEntry,
+  FoodSource,
+  MealType,
+  ProfileVisibility,
+  User,
+} from "@supercalorie/core";
 import { getDb } from "./db";
 
 /**
@@ -245,6 +252,115 @@ export const photos = {
       userId,
     );
     return row ? { id: row.id, contentType: row.content_type } : null;
+  },
+};
+
+interface ProfileRow {
+  user_id: string;
+  handle: string;
+  display_name: string;
+  bio: string | null;
+  avatar_photo_id: string | null;
+  is_public: number;
+  show_today: number;
+  show_totals: number;
+  show_top_foods: number;
+  show_heatmap: number;
+  show_recent: number;
+  created_at: string;
+}
+
+export interface ProfileRecord extends ProfileVisibility {
+  userId: string;
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  avatarPhotoId: string | null;
+  createdAt: string;
+}
+
+// SQLite has no boolean type; 1/0 in, true/false out, in one place.
+const toBool = (value: number) => value === 1;
+const fromBool = (value: boolean) => (value ? 1 : 0);
+
+function toProfile(row: ProfileRow): ProfileRecord {
+  return {
+    userId: row.user_id,
+    handle: row.handle,
+    displayName: row.display_name,
+    bio: row.bio,
+    avatarPhotoId: row.avatar_photo_id,
+    createdAt: row.created_at,
+    isPublic: toBool(row.is_public),
+    showToday: toBool(row.show_today),
+    showTotals: toBool(row.show_totals),
+    showTopFoods: toBool(row.show_top_foods),
+    showHeatmap: toBool(row.show_heatmap),
+    showRecent: toBool(row.show_recent),
+  };
+}
+
+export const profiles = {
+  byUser(userId: string): ProfileRecord | null {
+    const row = one<ProfileRow>("SELECT * FROM profiles WHERE user_id = ?", userId);
+    return row ? toProfile(row) : null;
+  },
+
+  byHandle(handle: string): ProfileRecord | null {
+    const row = one<ProfileRow>("SELECT * FROM profiles WHERE handle = ?", handle.toLowerCase());
+    return row ? toProfile(row) : null;
+  },
+
+  /**
+   * Claims or updates a profile. A new profile is created hidden — the
+   * caller has to switch each section on deliberately afterwards.
+   */
+  upsert(input: {
+    userId: string;
+    handle: string;
+    displayName: string;
+    bio: string | null;
+    avatarPhotoId: string | null;
+    visibility: ProfileVisibility;
+  }): ProfileRecord {
+    const { visibility: v } = input;
+    getDb()
+      .prepare(
+        `INSERT INTO profiles
+           (user_id, handle, display_name, bio, avatar_photo_id,
+            is_public, show_today, show_totals, show_top_foods, show_heatmap, show_recent, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           handle = excluded.handle,
+           display_name = excluded.display_name,
+           bio = excluded.bio,
+           avatar_photo_id = excluded.avatar_photo_id,
+           is_public = excluded.is_public,
+           show_today = excluded.show_today,
+           show_totals = excluded.show_totals,
+           show_top_foods = excluded.show_top_foods,
+           show_heatmap = excluded.show_heatmap,
+           show_recent = excluded.show_recent`,
+      )
+      .run(
+        input.userId,
+        input.handle.toLowerCase(),
+        input.displayName,
+        input.bio,
+        input.avatarPhotoId,
+        fromBool(v.isPublic),
+        fromBool(v.showToday),
+        fromBool(v.showTotals),
+        fromBool(v.showTopFoods),
+        fromBool(v.showHeatmap),
+        fromBool(v.showRecent),
+        new Date().toISOString(),
+      );
+    return profiles.byUser(input.userId)!;
+  },
+
+  remove(userId: string): void {
+    getDb().prepare("DELETE FROM profiles WHERE user_id = ?").run(userId);
   },
 };
 

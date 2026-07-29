@@ -126,6 +126,9 @@ npx @hey-api/openapi-ts -i http://localhost:3000/api/openapi.json -o ./generated
 | `/api/photos/:id` | GET | stream a photo back, scoped to its owner |
 | `/api/export` | GET | the whole account as one `Snapshot` |
 | `/api/import` | POST | merge a `Snapshot` in; additive and idempotent |
+| `/api/profile` | GET / PUT / DELETE | claim a handle and choose what to publish |
+| `/api/public/:handle` | GET | a public profile — **no auth**, only what its owner enabled |
+| `/api/public/:handle/avatar` | GET | that profile's avatar — **no auth** |
 | `/api/openapi.json` | GET | this API's specification (public) |
 
 `/api/export` returns the same shape the apps store locally, so a server export imports straight into a device and back again. Storing data here never costs you the ability to take it elsewhere.
@@ -213,6 +216,23 @@ Two behaviours are pinned by tests specifically because they're easy to regress 
 - **Deletes are user-scoped.** `DELETE /api/entries/:id` filters on `user_id` as well as `id`, so one account cannot delete another's entries.
 
 Not yet covered: React components, and the Expo app (no test runner in `apps/mobile`).
+
+## Public profiles
+
+Anyone using a server can claim a handle and share a page at `/u/<handle>`:
+a contribution heatmap, most-eaten foods, lifetime totals and streak, and
+recent items.
+
+Every section is **off until switched on**, and omitting a flag switches it
+off rather than leaving it as it was — a client that forgets a field
+publishes less, never more. A profile that isn't public returns 404, which is
+indistinguishable from an unclaimed handle, so nobody can probe which
+accounts exist. Only the avatar is readable publicly; meal photos stay
+owner-scoped.
+
+The public endpoints send `no-store`. Caching them meant a profile stayed
+readable for a minute after its owner made it private, which is the one thing
+a privacy control must not do.
 
 ## Releases
 

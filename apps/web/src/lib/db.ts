@@ -116,6 +116,26 @@ function migrate(database: DatabaseSync) {
       byte_size INTEGER NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    -- A shareable page. Every visibility column defaults to 0: claiming a
+    -- handle must never, by itself, publish anything about what someone eats.
+    CREATE TABLE IF NOT EXISTS profiles (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      handle TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL DEFAULT '',
+      bio TEXT,
+      avatar_photo_id TEXT REFERENCES photos(id) ON DELETE SET NULL,
+      is_public INTEGER NOT NULL DEFAULT 0,
+      show_today INTEGER NOT NULL DEFAULT 0,
+      show_totals INTEGER NOT NULL DEFAULT 0,
+      show_top_foods INTEGER NOT NULL DEFAULT 0,
+      show_heatmap INTEGER NOT NULL DEFAULT 0,
+      show_recent INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    -- Lookups are by handle, and it is compared lowercase everywhere.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_handle ON profiles(handle);
   `);
 }
 

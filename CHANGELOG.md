@@ -35,6 +35,15 @@ no notes is worse than a delayed one.
 
 ### Added
 
+- **Shareable public profiles.** Claim a handle and get a page at
+  `/u/<handle>` with a GitHub-style contribution heatmap, most-eaten foods,
+  lifetime totals and streak, and recent items. Every section is off until
+  you switch it on, and a profile that isn't public is a 404 — identical to
+  an unclaimed handle, so account existence can't be probed. Only the chosen
+  avatar becomes readable; meal photos stay private.
+- **Onboarding with three ways in:** keep everything local with no account,
+  use the instance the app is served from, or point it at a backend you run
+  yourself. Local is first and stays the default.
 - Debug and release build profiles for both platforms. `development` gives a
   debug build with the dev client, `preview` an installable Android APK, and
   `preview-ios-device` a real `.ipa` — the last needs a paid Apple Developer
@@ -42,6 +51,7 @@ no notes is worse than a delayed one.
 
 ### Changed
 
+- API contract at **0.2.0**, adding the profile and public-page endpoints.
 - Tests now run with coverage and **fail below 100%** on statements,
   branches, functions, and lines. Closing the gaps added tests for photo
   upload and retrieval, bulk export/import, the schema migration, session

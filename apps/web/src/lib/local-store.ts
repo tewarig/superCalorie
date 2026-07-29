@@ -1,6 +1,6 @@
 "use client";
 
-import { emptySnapshot, parseJSON, type Snapshot } from "@supercalorie/core";
+import { LOCAL_ONLY, emptySnapshot, parseJSON, type Connection, type Snapshot } from "@supercalorie/core";
 
 /**
  * On-device storage for the web app. This is the source of truth — the app
@@ -14,6 +14,7 @@ import { emptySnapshot, parseJSON, type Snapshot } from "@supercalorie/core";
  */
 
 const SNAPSHOT_KEY = "supercalorie.snapshot.v1";
+const CONNECTION_KEY = "supercalorie.connection.v1";
 const DB_NAME = "supercalorie";
 const PHOTO_STORE = "photos";
 
@@ -117,4 +118,62 @@ export async function readPhoto(id: string): Promise<Blob | null> {
 
 export async function deletePhoto(id: string): Promise<void> {
   await withPhotos("readwrite", (store) => store.delete(id)).catch(() => {});
+}
+
+/* -------------------------------------------------------------------------
+ * Where this device syncs, if anywhere. Stored separately from the snapshot
+ * so it never travels in an export — a backup restored onto another machine
+ * should not silently point it at someone else's server.
+ * ---------------------------------------------------------------------- */
+
+export function loadConnection(): Connection | null {
+  if (typeof window === "undefined") return null;
+
+  const stored = window.localStorage.getItem(CONNECTION_KEY);
+  if (!stored) return null;
+
+  try {
+    const parsed = JSON.parse(stored) as Connection;
+    const valid = ["local", "hosted", "self-hosted"].includes(parsed?.mode);
+    return valid ? { mode: parsed.mode, serverUrl: parsed.serverUrl ?? "" } : LOCAL_ONLY;
+  } catch {
+    return LOCAL_ONLY;
+  }
+}
+
+export function saveConnection(connection: Connection): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CONNECTION_KEY, JSON.stringify(connection));
+}
+
+/**
+ * The same external-store plumbing as the snapshot above, for the same
+ * reason: reading localStorage in an effect means a setState on every mount,
+ * which React's compiler flags as a cascading render.
+ *
+ * `undefined` is "not read yet" and null is "never chosen" — the distinction
+ * is what stops the onboarding screen flashing before the stored choice is
+ * known. The server snapshot is undefined, so nothing renders until hydration.
+ */
+let cachedConnection: Connection | null | undefined;
+const connectionListeners = new Set<() => void>();
+
+export function getConnection(): Connection | null {
+  if (cachedConnection === undefined) cachedConnection = loadConnection();
+  return cachedConnection;
+}
+
+export function getServerConnection(): Connection | null {
+  return null;
+}
+
+export function subscribeToConnection(listener: () => void): () => void {
+  connectionListeners.add(listener);
+  return () => connectionListeners.delete(listener);
+}
+
+export function commitConnection(connection: Connection): void {
+  cachedConnection = connection;
+  saveConnection(connection);
+  for (const listener of connectionListeners) listener();
 }

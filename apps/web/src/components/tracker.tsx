@@ -14,10 +14,17 @@ import {
   type MealType,
 } from "@supercalorie/core";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CalorieRing } from "@/components/calorie-ring";
 import { DataMenu } from "@/components/data-menu";
 import { LocalPhoto } from "@/components/local-photo";
+import { Onboarding } from "@/components/onboarding";
+import {
+  commitConnection,
+  getConnection,
+  getServerConnection,
+  subscribeToConnection,
+} from "@/lib/local-store";
 import { useTracker } from "@/lib/use-tracker";
 
 const MACROS = [
@@ -34,6 +41,14 @@ function shiftDate(iso: string, days: number): string {
 }
 
 export function Tracker() {
+  // Null until a choice is made; the server render is always null so the
+  // onboarding screen never flashes for someone who already chose.
+  const connection = useSyncExternalStore(
+    subscribeToConnection,
+    getConnection,
+    getServerConnection,
+  );
+
   const [date, setDate] = useState(todayISO());
   const tracker = useTracker(date);
   const { day, profile } = tracker;
@@ -63,13 +78,21 @@ export function Tracker() {
     if (photoRef.current) photoRef.current.value = "";
   }
 
+  if (connection === null) return <Onboarding onChoose={commitConnection} />;
+
   return (
     <div className="grain min-h-screen">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
         <Link href="/" className="font-display text-xl font-semibold text-ink">
           super<span className="text-tangerine">Calorie</span>
         </Link>
-        <span className="text-sm text-ink-faint">Saved on this device</span>
+        <span className="text-sm text-ink-faint">
+          {connection.mode === "local"
+            ? "Saved on this device"
+            : connection.mode === "self-hosted"
+              ? `Syncing with ${connection.serverUrl}`
+              : "Signed-in sync available"}
+        </span>
       </header>
 
       <main className="mx-auto grid w-full max-w-5xl gap-6 px-6 pb-20 lg:grid-cols-[0.9fr_1.1fr]">

@@ -129,10 +129,14 @@ describe("the document is usable by tooling", () => {
     }
 
     // Anything else being reachable without credentials is a real finding,
-    // not a documentation nit.
+    // not a documentation nit. The two public-profile routes are here on
+    // purpose — a shareable page that needs a login is not shareable — and
+    // they only ever return what an owner explicitly switched on.
     expect(publicOperations.sort()).toEqual([
       "GET /api/health",
       "GET /api/openapi.json",
+      "GET /api/public/{handle}",
+      "GET /api/public/{handle}/avatar",
       "POST /api/auth/login",
       "POST /api/auth/signup",
     ]);

@@ -11,7 +11,7 @@
  * break an existing integration.
  */
 
-export const API_VERSION = "0.1.0";
+export const API_VERSION = "0.2.0";
 
 const error = {
   type: "object",
@@ -69,6 +69,7 @@ export const openApiDocument = {
     { name: "Entries", description: "Logged food." },
     { name: "Photos", description: "Meal images." },
     { name: "Portability", description: "Bulk export and import." },
+    { name: "Profile", description: "The shareable public page." },
     { name: "Meta", description: "The API's own description." },
   ],
   security: [{ bearerAuth: [] }, { cookieAuth: [] }],
@@ -374,6 +375,120 @@ export const openApiDocument = {
       },
     },
 
+    "/api/profile": {
+      get: {
+        tags: ["Profile"],
+        summary: "Your own profile",
+        description: "Includes sections that are switched off, since this is the owner's view.",
+        responses: {
+          "200": jsonResponse("The profile, or null if none is claimed.", {
+            type: "object",
+            properties: { profile: { oneOf: [ref("Profile"), { type: "null" }] } },
+          }),
+          "401": errorResponses["401"],
+        },
+      },
+      put: {
+        tags: ["Profile"],
+        summary: "Claim a handle and choose what to publish",
+        description: [
+          "Every visibility flag defaults to false, including on update — omitting",
+          "one switches it off rather than leaving it as it was. A client that",
+          "forgets a field therefore publishes less, never more.",
+          "",
+          "A new profile publishes nothing: claiming a name and sharing a food",
+          "diary are separate decisions.",
+        ].join("\n"),
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  handle: { type: "string", pattern: "^[a-z0-9][a-z0-9_-]{1,28}[a-z0-9]$" },
+                  displayName: { type: "string", maxLength: 60 },
+                  bio: { type: "string", maxLength: 280 },
+                  avatarPhotoId: {
+                    type: "string",
+                    description: "Must be a photo this account uploaded.",
+                  },
+                  isPublic: { type: "boolean", default: false },
+                  showToday: { type: "boolean", default: false },
+                  showTotals: { type: "boolean", default: false },
+                  showTopFoods: { type: "boolean", default: false },
+                  showHeatmap: { type: "boolean", default: false },
+                  showRecent: { type: "boolean", default: false },
+                },
+                required: ["handle"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": jsonResponse("Saved.", {
+            type: "object",
+            properties: { profile: ref("Profile") },
+          }),
+          "400": errorResponses["400"],
+          "401": errorResponses["401"],
+          "404": jsonResponse("The avatar photo does not belong to this account.", error),
+          "409": jsonResponse("Another account holds that handle.", error),
+        },
+      },
+      delete: {
+        tags: ["Profile"],
+        summary: "Release the handle and take the page down",
+        responses: {
+          "200": jsonResponse("Removed.", {
+            type: "object",
+            properties: { ok: { type: "boolean" } },
+          }),
+          "401": errorResponses["401"],
+        },
+      },
+    },
+
+    "/api/public/{handle}": {
+      get: {
+        tags: ["Profile"],
+        summary: "A public profile",
+        description: [
+          "Unauthenticated — this is the shareable page.",
+          "",
+          "Only sections the owner enabled are present, and a hidden section is",
+          "absent rather than null, so its existence cannot be inferred. A",
+          "profile that is not public returns 404, identical to an unclaimed",
+          "handle, so account existence cannot be probed.",
+        ].join("\n"),
+        security: [],
+        parameters: [{ name: "handle", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": jsonResponse("The profile as the world sees it.", ref("PublicProfile")),
+          "404": jsonResponse("No public profile at that handle.", error),
+        },
+      },
+    },
+
+    "/api/public/{handle}/avatar": {
+      get: {
+        tags: ["Profile"],
+        summary: "A public profile's avatar",
+        description:
+          "Separate from /api/photos/:id, which stays owner-scoped. Meal photos are private; only the chosen avatar is readable, and only while the profile is public.",
+        security: [],
+        parameters: [{ name: "handle", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "The image bytes.",
+            content: { "image/jpeg": { schema: { type: "string", format: "binary" } } },
+          },
+          "404": jsonResponse("No public avatar.", error),
+          "410": jsonResponse("Recorded, but the file is gone.", error),
+        },
+      },
+    },
+
     "/api/export": {
       get: {
         tags: ["Portability"],
@@ -513,6 +628,85 @@ export const openApiDocument = {
           customFoods: { type: "array", items: ref("Food") },
         },
         required: ["version", "entries"],
+      },
+      Profile: {
+        type: "object",
+        description: "The owner's view, including sections that are switched off.",
+        properties: {
+          handle: { type: "string" },
+          displayName: { type: "string" },
+          bio: { type: ["string", "null"] },
+          avatarPhotoId: { type: ["string", "null"] },
+          createdAt: { type: "string", format: "date-time" },
+          isPublic: { type: "boolean" },
+          showToday: { type: "boolean" },
+          showTotals: { type: "boolean" },
+          showTopFoods: { type: "boolean" },
+          showHeatmap: { type: "boolean" },
+          showRecent: { type: "boolean" },
+        },
+      },
+      PublicProfile: {
+        type: "object",
+        properties: {
+          handle: { type: "string" },
+          displayName: { type: "string" },
+          bio: { type: ["string", "null"] },
+          avatarPhotoId: { type: ["string", "null"] },
+          joinedAt: { type: "string", format: "date-time" },
+          stats: {
+            type: "object",
+            description: "Only the enabled sections appear.",
+            properties: {
+              today: {
+                type: "object",
+                properties: { calories: { type: "integer" }, goal: { type: "integer" } },
+              },
+              totals: {
+                type: "object",
+                properties: {
+                  days: { type: "integer" },
+                  entries: { type: "integer" },
+                  calories: { type: "integer" },
+                  currentStreak: { type: "integer" },
+                },
+              },
+              topFoods: { type: "array", items: ref("TopFood") },
+              heatmap: { type: "array", items: ref("HeatmapDay") },
+              recent: { type: "array", items: ref("RecentItem") },
+            },
+          },
+        },
+      },
+      TopFood: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          count: { type: "integer" },
+          calories: { type: "integer" },
+        },
+      },
+      HeatmapDay: {
+        type: "object",
+        properties: {
+          date: { type: "string" },
+          calories: { type: "integer" },
+          level: {
+            type: "integer",
+            minimum: 0,
+            maximum: 4,
+            description: "0 = nothing logged; 1–4 are quarters of that person's own goal.",
+          },
+        },
+      },
+      RecentItem: {
+        type: "object",
+        properties: {
+          date: { type: "string" },
+          name: { type: "string" },
+          calories: { type: "integer" },
+          meal: ref("MealType"),
+        },
       },
       Error: error,
     },
