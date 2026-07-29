@@ -11,7 +11,7 @@ Everything in V1 serves one loop — **open the app, find what you ate in second
 - **Your usuals.** With an empty search box the app returns your most-logged foods, so the common case needs zero typing.
 - **Honest totals.** A calorie ring plus macro bars against targets derived from your goal (30/40/30 split).
 - **Meal photos.** Snap or pick a picture when you log; it shows as a thumbnail on the entry.
-- **Same account everywhere.** Log lunch on the phone, see it on the laptop.
+- **No account, no server.** Everything is stored on your device and works offline. Export as JSON or CSV whenever you like, and sync through the optional backend only if you want to.
 
 ## Layout
 
@@ -59,12 +59,12 @@ pnpm dev:mobile   # Expo dev server (press i / a for iOS / Android)
 pnpm dev          # both, via turbo
 
 pnpm build        # build all workspaces
-pnpm test         # API route tests (vitest, in-memory database)
+pnpm test         # vitest: domain logic, snapshots, API routes, OpenAPI drift
 pnpm typecheck    # tsc across all workspaces
 pnpm lint
 ```
 
-Then open http://localhost:3000, create an account, and start logging.
+Then open http://localhost:3000/today and start logging — there is no sign-up step, and the backend can be switched off entirely.
 
 If you forget to switch Node versions, the web app's scripts stop with an explicit message rather than the misleading `--experimental-sqlite is not allowed in NODE_OPTIONS` you'd otherwise get from Node 20.
 
@@ -76,13 +76,41 @@ Defaults to `localhost:3000` (iOS simulator) and `10.0.2.2:3000` (Android emulat
 EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 pnpm dev:mobile
 ```
 
-The login screen prints the backend URL it resolved along the bottom, which makes a misconfigured address obvious instead of mysterious. Start the web app first — mobile has no local store to fall back on.
+The app works with no backend at all, so this only matters once you want server sync.
 
-## Backend (apps/web)
+## Storage: local first
 
-Auth and data live in Next.js route handlers, backed by SQLite through Node's built-in `node:sqlite` driver — no native module to compile. The database file lands in `apps/web/.data/` and seeds the food library on first run.
+Both apps keep everything on the device and need no account, no connection, and no server. One `Snapshot` document holds the profile, every entry, and any foods you added yourself — and that same document *is* the export format, so backing up is writing the store out and restoring is reading one in.
 
-Sessions work over two transports: the web app uses an httpOnly cookie, the mobile app an `Authorization: Bearer` token kept in the device keychain (React Native has no dependable shared cookie jar). Passwords are scrypt-hashed; tokens are HMAC-signed.
+| | Document | Photos |
+| --- | --- | --- |
+| Web | `localStorage` | IndexedDB |
+| Mobile | `expo-file-system` | files beside it |
+
+Photos stay out of the document because base64 in `localStorage` would exhaust the quota after a few meals.
+
+Import is additive and idempotent: entries match on id, so re-importing a file changes nothing, and restoring an old backup onto a device with newer entries keeps both. An imported profile never overwrites a goal you set on this device.
+
+## Backend (apps/web) — optional
+
+The API exists for syncing between devices, keeping a backup, and letting other tools build on your data. **Nothing in the apps requires it.**
+
+It's Next.js route handlers over SQLite via Node's built-in `node:sqlite` — no native module to compile. The database lands in `apps/web/.data/` and seeds the food library on first run.
+
+Sessions work over two transports: an httpOnly cookie for browsers, and an `Authorization: Bearer` token for anything without a dependable cookie jar. Passwords are scrypt-hashed; tokens are HMAC-signed.
+
+### API reference
+
+The contract is published as OpenAPI 3.1, versioned independently of the app:
+
+- **`/api-docs`** — browsable reference
+- **`/api/openapi.json`** — the specification, unauthenticated so you can point a client generator straight at it
+
+```sh
+npx @hey-api/openapi-ts -i http://localhost:3000/api/openapi.json -o ./generated
+```
+
+`tests/openapi.test.ts` asserts the spec matches the routes that actually exist — every route documented, every documented route real, matching methods. A hand-written spec drifts the moment someone forgets, and a stale contract published to integrators is worse than none.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
@@ -96,6 +124,11 @@ Sessions work over two transports: the web app uses an httpOnly cookie, the mobi
 | `/api/entries/:id` | DELETE | remove an entry |
 | `/api/photos` | POST | upload a meal photo (multipart, field `photo`) → `photoId` |
 | `/api/photos/:id` | GET | stream a photo back, scoped to its owner |
+| `/api/export` | GET | the whole account as one `Snapshot` |
+| `/api/import` | POST | merge a `Snapshot` in; additive and idempotent |
+| `/api/openapi.json` | GET | this API's specification (public) |
+
+`/api/export` returns the same shape the apps store locally, so a server export imports straight into a device and back again. Storing data here never costs you the ability to take it elsewhere.
 
 Copy `apps/web/.env.example` to `.env.local`. **`SESSION_SECRET` is required in production** — the app refuses to boot without it. In development a secret is generated once and cached in `.data/` so restarts don't log you out.
 

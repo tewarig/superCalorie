@@ -247,6 +247,15 @@ export const photos = {
 };
 
 export const entries = {
+  /** Every entry for a user, oldest first — the basis of a full export. */
+  all(userId: string): FoodEntry[] {
+    const rows = all<EntryRow>(
+      "SELECT * FROM entries WHERE user_id = ? ORDER BY date, created_at",
+      userId,
+    );
+    return rows.map(toEntry);
+  },
+
   forDay(userId: string, date: string): FoodEntry[] {
     const rows = all<EntryRow>(
       "SELECT * FROM entries WHERE user_id = ? AND date = ? ORDER BY created_at",
@@ -293,6 +302,38 @@ export const entries = {
       input.photoId ?? null,
     );
     return toEntry(one<EntryRow>("SELECT * FROM entries WHERE id = ?", id)!);
+  },
+
+  /**
+   * Inserts an entry keeping the id it already has, which is what makes an
+   * import idempotent — a re-sent document collides on the primary key
+   * rather than creating a duplicate.
+   */
+  createWithId(input: FoodEntry & { userId: string }): void {
+    getDb()
+      .prepare(
+        `INSERT OR IGNORE INTO entries
+           (id, user_id, food_id, name, quantity, serving_label, calories, protein, carbs, fat, meal, date, created_at, photo_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.id,
+        input.userId,
+        input.foodId,
+        input.name,
+        input.quantity,
+        input.servingLabel,
+        input.calories,
+        input.protein,
+        input.carbs,
+        input.fat,
+        input.meal,
+        input.date,
+        input.createdAt,
+        // Photo bytes don't travel with a snapshot, so a synced entry keeps
+        // its text and numbers but not an image this server has never seen.
+        null,
+      );
   },
 
   remove(userId: string, id: string): boolean {

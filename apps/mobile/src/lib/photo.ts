@@ -1,5 +1,4 @@
 import * as ImagePicker from "expo-image-picker";
-import { api } from "./api";
 
 export interface PickedPhoto {
   uri: string;
@@ -36,23 +35,4 @@ export async function takePhoto(): Promise<PickedPhoto | null> {
 export async function pickPhoto(): Promise<PickedPhoto | null> {
   const result = await ImagePicker.launchImageLibraryAsync(OPTIONS);
   return result.canceled ? null : toPicked(result.assets[0]);
-}
-
-/**
- * Uploads a picked photo and returns its id.
- *
- * React Native's FormData takes `{ uri, name, type }` rather than a Blob —
- * the native layer reads the file off disk. TypeScript's DOM lib has no
- * signature for that, hence the cast.
- */
-export async function uploadPhoto(photo: PickedPhoto): Promise<string> {
-  const form = new FormData();
-  form.append("photo", {
-    uri: photo.uri,
-    name: photo.fileName,
-    type: photo.mimeType,
-  } as unknown as Blob);
-
-  const { photoId } = await api.uploadPhoto(form);
-  return photoId;
 }
