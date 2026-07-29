@@ -10,11 +10,11 @@ import { AppButton } from "@supercalorie/ui/app-button";
 import { SectionHeading } from "@supercalorie/ui/section-heading";
 import { Surface } from "@supercalorie/ui/surface";
 import { Link } from "expo-router";
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { clearConnection, getConnection, subscribeToConnection } from "@/lib/local-store";
-import { getSession, signOut, subscribeToSession } from "@/lib/session";
+import { apiClient, getSession, signOut, subscribeToSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
@@ -79,8 +79,64 @@ export default function SharingScreen() {
   const today = todayISO();
   const { snapshot, profile, ready } = useTracker(today);
   const [visibility, setVisibility] = useState<ProfileVisibility>(NOTHING_SHARED);
+  const [handle, setHandle] = useState("");
+  const [claimed, setClaimed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const connection = useSyncExternalStore(subscribeToConnection, getConnection, getConnection);
   const session = useSyncExternalStore(subscribeToSession, getSession, getSession);
+
+  // The published profile, if there is one. Loaded rather than assumed, so
+  // the toggles show what visitors actually see rather than a local guess.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    apiClient()
+      .profile()
+      .then(({ profile }) => {
+        if (cancelled || !profile) return;
+        setHandle(profile.handle);
+        setClaimed(true);
+        setVisibility({
+          isPublic: profile.isPublic,
+          showToday: profile.showToday,
+          showTotals: profile.showTotals,
+          showHeatmap: profile.showHeatmap,
+          showTopFoods: profile.showTopFoods,
+          showRecent: profile.showRecent,
+        });
+      })
+      .catch(() => {
+        // No profile yet, or the server is unreachable. Neither is worth an
+        // alert on a screen the user may only be browsing.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  const publish = useCallback(
+    async (next: ProfileVisibility, nextHandle: string) => {
+      if (!session) return;
+      setSaving(true);
+      try {
+        // Every flag every time: the endpoint reads them individually and
+        // treats an omitted one as off, so a partial body would quietly
+        // unpublish sections the user left alone.
+        await apiClient().saveProfile({ handle: nextHandle, ...next });
+        setClaimed(true);
+      } catch (cause) {
+        Alert.alert(
+          "Could not save",
+          cause instanceof Error ? cause.message : "Try again in a moment.",
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [session],
+  );
 
   const preview = useMemo(
     () => (ready ? buildPublicStats(snapshot.entries, profile.dailyCalorieGoal, visibility, today) : {}),
@@ -111,21 +167,52 @@ export default function SharingScreen() {
 
         <Surface>
           <Text className="font-bold text-base text-ink">
-            {connection?.mode === "local" || !connection
-              ? "Nothing is published"
-              : "Connected, not yet published"}
+            {claimed && visibility.isPublic
+              ? "Your page is live"
+              : claimed
+                ? "Claimed, nothing visible yet"
+                : "Nothing is published"}
           </Text>
           <Text className="mt-1 font-body text-sm text-muted">
-            {connection?.mode === "self-hosted"
-              ? `This device talks to ${connection.serverUrl}. Claiming a handle there is not wired up yet.`
-              : connection?.mode === "hosted"
-                ? "This device talks to the cloud instance. Claiming a handle is not wired up yet."
-                : "Everything stays on this device. Claiming a handle needs a server to publish to — connect one and these settings become your page at /u/your-handle."}
+            {!session
+              ? "Publishing needs an account on a server. Sign in below and you can claim a handle."
+              : claimed
+                ? `Your page is at /u/${handle}. Only the sections switched on below are visible.`
+                : "Claim a handle and your page exists — still empty, because every section starts off."}
           </Text>
+
+          {session ? (
+            <View className="mt-4 gap-2">
+              <TextInput
+                accessibilityLabel="Handle"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+                // A handle is part of a public URL others may already have
+                // linked to, so changing it is not a casual edit.
+                editable={!claimed}
+                onChangeText={setHandle}
+                placeholder="your-handle"
+                placeholderTextColor={colors.muted}
+                value={handle}
+              />
+              <Text className="font-body text-xs text-muted">
+                Lowercase letters, numbers and single dashes.
+              </Text>
+              <View className="flex-row items-center gap-2">
+                <AppButton
+                  disabled={handle.trim() === "" || saving}
+                  size="sm"
+                  onPress={() => void publish(visibility, handle.trim())}
+                >
+                  {claimed ? "Save" : "Claim it"}
+                </AppButton>
+                {saving ? <ActivityIndicator color={colors.moss} /> : null}
+              </View>
+            </View>
+          ) : null}
+
           <View className="mt-4 flex-row flex-wrap gap-2">
-            <AppButton disabled size="sm" tone="secondary">
-              Claim a handle
-            </AppButton>
             <AppButton size="sm" tone="quiet" onPress={clearConnection}>
               {connection?.mode === "local" ? "Connect a server" : "Change server"}
             </AppButton>
@@ -158,6 +245,28 @@ export default function SharingScreen() {
           </View>
         </Surface>
 
+        {claimed ? (
+          <Surface className="pt-0">
+            {/* The master switch, kept apart from the section list: with this
+                off the page 404s however many sections are on, which is the
+                privacy guarantee the backend makes. */}
+            <Toggle
+              detail={
+                visibility.isPublic
+                  ? "Anyone with the link can see the sections below."
+                  : "Your page returns 404, exactly like an unclaimed handle."
+              }
+              label="Page is public"
+              on={visibility.isPublic}
+              onPress={() => {
+                const next = { ...visibility, isPublic: !visibility.isPublic };
+                setVisibility(next);
+                void publish(next, handle);
+              }}
+            />
+          </Surface>
+        ) : null}
+
         <SectionHeading detail={`${shown.length} of ${SECTIONS.length}`} title="What to show" />
         <Surface className="pt-0">
           {SECTIONS.map((section) => (
@@ -166,9 +275,14 @@ export default function SharingScreen() {
               key={section.key}
               label={section.label}
               on={visibility[section.key]}
-              onPress={() =>
-                setVisibility((current) => ({ ...current, [section.key]: !current[section.key] }))
-              }
+              onPress={() => {
+                const next = { ...visibility, [section.key]: !visibility[section.key] };
+                setVisibility(next);
+                // Optimistic: the switch moves now and the request follows.
+                // Waiting on a round trip to animate a toggle reads as broken.
+                // A failure alerts, and the next load corrects the state.
+                if (claimed) void publish(next, handle);
+              }}
             />
           ))}
         </Surface>

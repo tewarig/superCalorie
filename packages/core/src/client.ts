@@ -1,3 +1,4 @@
+import type { OwnProfile, ProfileVisibility } from "./public-profile";
 import type { AuthResult, DaySummary, Food, FoodEntry, MealType, User } from "./types";
 
 export class ApiError extends Error {
@@ -69,6 +70,30 @@ export function createApiClient({ baseUrl = "", getToken }: ApiClientOptions = {
     logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
 
     me: () => request<{ user: User }>("/api/auth/me"),
+
+    /** The caller's own profile — null until a handle is claimed. */
+    profile: () => request<{ profile: OwnProfile | null }>("/api/profile"),
+
+    /**
+     * Claims a handle and sets what is published.
+     *
+     * Every visibility flag is sent every time. The endpoint reads them
+     * individually and treats an omitted flag as off, so a partial body
+     * silently unpublishes sections rather than leaving them alone.
+     */
+    saveProfile: (input: {
+      handle: string;
+      displayName?: string;
+      bio?: string;
+      avatarPhotoId?: string | null;
+    } & ProfileVisibility) =>
+      request<{ profile: OwnProfile }>("/api/profile", {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
+
+    /** Gives up the handle and removes the public page entirely. */
+    deleteProfile: () => request<{ ok: true }>("/api/profile", { method: "DELETE" }),
 
     updateGoal: (dailyCalorieGoal: number) =>
       request<{ user: User }>("/api/auth/me", {

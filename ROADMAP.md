@@ -61,12 +61,11 @@ rendered by anything. Leave them until the web look lands, then decide.
       self-hosted, gating the router in `_layout.tsx`. Changeable afterwards
       from Sharing. The cloud option only appears when `EXPO_PUBLIC_HOSTED_URL`
       is set, so it is hidden until an instance is actually published.
-- [ ] **Publishing from the app.** The Sharing tab has the visibility
-      toggles and a preview built from the real `buildPublicStats`, but
-      claiming a handle needs a server and the button says so. Wire it to
-      `/api/profile` once a connection exists. Blocked on logging in from the
-      app. The app is where sharing is set up; the web is only where the
-      result is read.
+- [x] **Publishing from the app.** Claims a handle and saves visibility
+      against `/api/profile`, loading current state from the server rather
+      than guessing. `isPublic` is a separate master switch.
+- [ ] **Avatar upload from the app.** The only part of publishing still
+      missing; needs the photo endpoint wired from mobile.
 
 ## Next
 

@@ -99,6 +99,19 @@ export interface PublicStats {
   recent?: RecentItem[];
 }
 
+/**
+ * A profile as its owner sees it — including the flags, which a visitor
+ * never receives. The server's ProfileRecord is this shape.
+ */
+export interface OwnProfile extends ProfileVisibility {
+  userId: string;
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  avatarPhotoId: string | null;
+  createdAt: string;
+}
+
 export interface PublicProfile {
   handle: string;
   displayName: string;
