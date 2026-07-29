@@ -11,7 +11,7 @@
  * break an existing integration.
  */
 
-export const API_VERSION = "0.2.0";
+export const API_VERSION = "0.3.0";
 
 const error = {
   type: "object",
@@ -195,8 +195,12 @@ export const openApiDocument = {
                 type: "object",
                 properties: {
                   dailyCalorieGoal: { type: "integer", minimum: 800, maximum: 10000 },
+                  macroSplit: ref("MacroSplit"),
                 },
-                required: ["dailyCalorieGoal"],
+                // Neither is required on its own, but a body with neither is
+                // rejected — a typo in a field name should not look like a
+                // successful no-op.
+                minProperties: 1,
               },
             },
           },
@@ -550,8 +554,20 @@ export const openApiDocument = {
           email: { type: "string", format: "email" },
           name: { type: "string" },
           dailyCalorieGoal: { type: "integer" },
+          macroSplit: ref("MacroSplit"),
           createdAt: { type: "string", format: "date-time" },
         },
+      },
+      MacroSplit: {
+        type: "object",
+        description:
+          "How the calorie goal divides between macronutrients, as whole percentages. Always totals exactly 100; a body that does not is rejected rather than rescaled. Grams are derived at 4, 4 and 9 kcal per gram.",
+        properties: {
+          protein: { type: "integer", minimum: 0, maximum: 100 },
+          carbs: { type: "integer", minimum: 0, maximum: 100 },
+          fat: { type: "integer", minimum: 0, maximum: 100 },
+        },
+        required: ["protein", "carbs", "fat"],
       },
       AuthResult: {
         type: "object",

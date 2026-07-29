@@ -64,16 +64,20 @@ rendered by anything. Leave them until the web look lands, then decide.
 - [ ] **Publishing from the app.** The Sharing tab has the visibility
       toggles and a preview built from the real `buildPublicStats`, but
       claiming a handle needs a server and the button says so. Wire it to
-      `/api/profile` once a connection exists. The app is where sharing is
-      set up; the web is only where the result is read.
+      `/api/profile` once a connection exists. Blocked on logging in from the
+      app. The app is where sharing is set up; the web is only where the
+      result is read.
 
 ## Next
 
-- [ ] **Macro split on the server.** It is a client-side preference today —
-      the users table has no column, so `/api/export` emits the default and
-      the importing device keeps its own split. Needed before the split can
-      follow someone between devices, and it is backend work, so it ranks
-      above anything on the web.
+- [x] **Macro split on the server.** A `macro_split` column on `users`,
+      settable through `PATCH /api/auth/me`, carried by `/api/export`. API
+      version 0.3.0. The apps do not call it yet — mobile has no login at
+      all, which is the prerequisite below.
+- [ ] **Log in from the app.** Nothing in `apps/mobile` authenticates: no
+      sign-in screen, no token storage. `client.ts` and the bearer token in
+      `AuthResult` were designed for it. This blocks publishing and any
+      syncing, so it comes before either.
 - [ ] **Web adopts the new look.** Summary-style layout, the shared design
       system components, and the sharing controls. Numeric cards rather than
       charts. Second-class by design: this should never block app work.
@@ -102,3 +106,7 @@ rendered by anything. Leave them until the web look lands, then decide.
   the coverage globs or they are invisible to a run that still reports 100%.
 - **Verify the mobile app by bundling**, not by starting Metro: a broken
   route or a missing screen still starts cleanly.
+- **Bundling is not running.** Metro resolves modules, it does not evaluate
+  them, so a missing global or a bad runtime assumption survives a green
+  bundle, a green typecheck and a green suite. Issue #2 was exactly this.
+  Anything touching app runtime needs a device or simulator pass.

@@ -1,13 +1,24 @@
 import { randomUUID } from "node:crypto";
-import type {
-  Food,
-  FoodEntry,
-  FoodSource,
-  MealType,
-  ProfileVisibility,
-  User,
+import {
+  parseMacroSplit,
+  type Food,
+  type FoodEntry,
+  type FoodSource,
+  type MacroSplit,
+  type MealType,
+  type ProfileVisibility,
+  type User,
 } from "@supercalorie/core";
 import { getDb } from "./db";
+
+/** Reads the stored JSON, falling back to the default on anything unusable. */
+function parseStoredSplit(text: string): MacroSplit {
+  try {
+    return parseMacroSplit(JSON.parse(text));
+  } catch {
+    return parseMacroSplit(null);
+  }
+}
 
 /**
  * Query layer. Everything above this file speaks the shared domain types
@@ -41,6 +52,7 @@ interface UserRow {
   salt: string;
   name: string;
   daily_calorie_goal: number;
+  macro_split: string;
   created_at: string;
 }
 
@@ -71,6 +83,9 @@ function toUser(row: UserRow): UserRecord {
     email: row.email,
     name: row.name,
     dailyCalorieGoal: row.daily_calorie_goal,
+    // Parsed rather than trusted: the column is JSON text, so a hand-edited
+    // database cannot put a split that does not total 100 in front of anyone.
+    macroSplit: parseStoredSplit(row.macro_split),
     createdAt: row.created_at,
     passwordHash: row.password_hash,
     salt: row.salt,
@@ -117,6 +132,7 @@ export function publicUser(user: UserRecord): User {
     email: user.email,
     name: user.name,
     dailyCalorieGoal: user.dailyCalorieGoal,
+    macroSplit: user.macroSplit,
     createdAt: user.createdAt,
   };
 }
@@ -149,6 +165,13 @@ export const users = {
 
   setGoal(id: string, goal: number): UserRecord | null {
     getDb().prepare("UPDATE users SET daily_calorie_goal = ? WHERE id = ?").run(goal, id);
+    return users.byId(id);
+  },
+
+  setMacroSplit(id: string, split: MacroSplit): UserRecord | null {
+    getDb()
+      .prepare("UPDATE users SET macro_split = ? WHERE id = ?")
+      .run(JSON.stringify(split), id);
     return users.byId(id);
   },
 };

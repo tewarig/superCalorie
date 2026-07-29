@@ -104,6 +104,17 @@ function migrate(database: DatabaseSync) {
     );
   }
 
+  if (!columns("users").has("macro_split")) {
+    // Stored as the JSON of a MacroSplit rather than three columns: it is
+    // read and written as one value, it is validated by parseMacroSplit on
+    // the way out, and three independent columns could hold a total that is
+    // not 100. The default matches DEFAULT_MACRO_SPLIT, so existing accounts
+    // keep the targets they have always been shown.
+    database.exec(
+      `ALTER TABLE users ADD COLUMN macro_split TEXT NOT NULL DEFAULT '{"protein":30,"carbs":40,"fat":30}'`,
+    );
+  }
+
   if (!columns("entries").has("photo_id")) {
     database.exec("ALTER TABLE entries ADD COLUMN photo_id TEXT");
   }

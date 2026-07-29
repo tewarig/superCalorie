@@ -1,4 +1,4 @@
-import { DEFAULT_MACRO_SPLIT, SNAPSHOT_VERSION, type Snapshot } from "@supercalorie/core";
+import { SNAPSHOT_VERSION, type Snapshot } from "@supercalorie/core";
 import { getSessionUser } from "@/lib/auth";
 import { entries } from "@/lib/repo";
 
@@ -18,11 +18,7 @@ export async function GET(request: Request) {
     profile: {
       name: user.name,
       dailyCalorieGoal: user.dailyCalorieGoal,
-      // The macro split is a client-side preference for now — the users table
-      // has no column for it, so a server export carries the default and the
-      // importing device keeps whatever split it already had. Worth moving
-      // server-side when the split needs to follow someone between devices.
-      macroSplit: DEFAULT_MACRO_SPLIT,
+      macroSplit: user.macroSplit,
     },
     entries: entries.all(user.id),
     // Foods are resolved into each entry at log time, so an export needs no

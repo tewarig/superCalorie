@@ -1,3 +1,4 @@
+import { DEFAULT_MACRO_SPLIT } from "@supercalorie/core";
 import { describe, expect, it } from "vitest";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
@@ -162,5 +163,115 @@ describe("/api/auth/me", () => {
     // The rejected writes left the accepted value alone.
     const after = await me(getRequest("/api/auth/me", token));
     expect((await after.json()).user.dailyCalorieGoal).toBe(2400);
+  });
+
+  it("starts every account on the balanced split", async () => {
+    const { token } = await createAccount("split-default@example.com");
+    const response = await me(getRequest("/api/auth/me", token));
+
+    expect((await response.json()).user.macroSplit).toEqual(DEFAULT_MACRO_SPLIT);
+  });
+
+  it("updates the macro split", async () => {
+    const { token } = await createAccount("split@example.com");
+    const split = { protein: 40, carbs: 30, fat: 30 };
+
+    const ok = await updateGoal(jsonRequest("PATCH", "/api/auth/me", { macroSplit: split }, token));
+
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).user.macroSplit).toEqual(split);
+  });
+
+  it("updates the goal and the split in one request", async () => {
+    const { token } = await createAccount("goal-and-split@example.com");
+
+    const ok = await updateGoal(
+      jsonRequest(
+        "PATCH",
+        "/api/auth/me",
+        { dailyCalorieGoal: 2600, macroSplit: { protein: 20, carbs: 55, fat: 25 } },
+        token,
+      ),
+    );
+
+    const { user } = await ok.json();
+    expect(user.dailyCalorieGoal).toBe(2600);
+    expect(user.macroSplit).toEqual({ protein: 20, carbs: 55, fat: 25 });
+  });
+
+  it.each([
+    ["a total that is not 100", { protein: 50, carbs: 30, fat: 30 }, /total 100, not 110/],
+    ["a fractional percentage", { protein: 33.3, carbs: 36.7, fat: 30 }, /whole number/],
+    ["a negative percentage", { protein: -10, carbs: 60, fat: 50 }, /between 0 and 100/],
+    ["a missing macro", { protein: 50, carbs: 50 }, /macroSplit.fat/],
+    ["a string", "40/30/30", /must be an object/],
+    ["null", null, /must be an object/],
+  ])("rejects %s", async (label, macroSplit, message) => {
+    const { token } = await createAccount(`bad-${label.replace(/\W/g, "")}@example.com`);
+
+    const response = await updateGoal(
+      jsonRequest("PATCH", "/api/auth/me", { macroSplit }, token),
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(message);
+  });
+
+  it("leaves the stored split untouched when the new one is rejected", async () => {
+    const { token } = await createAccount("split-atomic@example.com");
+    await updateGoal(
+      jsonRequest("PATCH", "/api/auth/me", { macroSplit: { protein: 40, carbs: 30, fat: 30 } }, token),
+    );
+
+    // Goal is valid, split is not. Neither may be written, or the caller is
+    // told the request failed while half of it took effect.
+    const response = await updateGoal(
+      jsonRequest(
+        "PATCH",
+        "/api/auth/me",
+        { dailyCalorieGoal: 2900, macroSplit: { protein: 1, carbs: 1, fat: 1 } },
+        token,
+      ),
+    );
+    expect(response.status).toBe(400);
+
+    const { user } = await (await me(getRequest("/api/auth/me", token))).json();
+    expect(user.macroSplit).toEqual({ protein: 40, carbs: 30, fat: 30 });
+    expect(user.dailyCalorieGoal).toBe(2000);
+  });
+
+  it("reports a body that asks for nothing, rather than accepting a typo", async () => {
+    const { token } = await createAccount("empty-patch@example.com");
+
+    const response = await updateGoal(
+      // `dailyCalorieGaol` — a real typo would otherwise look like success.
+      jsonRequest("PATCH", "/api/auth/me", { dailyCalorieGaol: 2400 }, token),
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/dailyCalorieGoal, macroSplit, or both/);
+  });
+
+  it("falls back to the balanced split when the stored JSON is unreadable", async () => {
+    const { token } = await createAccount("corrupt-split@example.com");
+    const { getDb } = await import("@/lib/db");
+
+    // What a hand-edited database, or a column written by some future client,
+    // could realistically contain. It must not crash the endpoint or hand
+    // back a split that does not total 100.
+    getDb().prepare("UPDATE users SET macro_split = ? WHERE email = ?")
+      .run("not json at all", "corrupt-split@example.com");
+
+    const response = await me(getRequest("/api/auth/me", token));
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).user.macroSplit).toEqual(DEFAULT_MACRO_SPLIT);
+  });
+
+  it("refuses an unauthenticated update", async () => {
+    const response = await updateGoal(
+      jsonRequest("PATCH", "/api/auth/me", { dailyCalorieGoal: 2400 }),
+    );
+    expect(response.status).toBe(401);
   });
 });

@@ -1,3 +1,5 @@
+import type { MacroSplit } from "./macros";
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -14,6 +16,8 @@ export interface User {
   email: string;
   name: string;
   dailyCalorieGoal: number;
+  /** How the goal divides between macros. Always totals 100. */
+  macroSplit: MacroSplit;
   createdAt: string;
 }
 

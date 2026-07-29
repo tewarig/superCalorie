@@ -15,6 +15,7 @@ import {
   type MealType,
   type Snapshot,
 } from "@supercalorie/core";
+import { randomUUID } from "expo-crypto";
 import { useCallback, useEffect, useState } from "react";
 import {
   deletePhoto,
@@ -26,12 +27,21 @@ import {
 } from "./local-store";
 import type { PickedPhoto } from "./photo";
 
+/**
+ * Entry ids, from Expo's crypto rather than a global.
+ *
+ * This used to read `typeof crypto?.randomUUID === "function"`, which looks
+ * like a guard and is not one: the operand `crypto?.randomUUID` evaluates
+ * `crypto` before `typeof` ever applies, so an undeclared global throws a
+ * ReferenceError instead of returning "undefined". On device that crashed the
+ * screen the moment anything was logged. Only `typeof crypto` on its own is
+ * safe, and expo-crypto removes the question entirely.
+ *
+ * These ids are what import dedupes on, so a real UUID matters more than a
+ * timestamp-plus-random fallback would have.
+ */
 function randomId(): string {
-  // Hermes has crypto.randomUUID from SDK 52 onward, but fall back rather
-  // than crash if it's ever missing on an older runtime.
-  return typeof crypto?.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return randomUUID();
 }
 
 function extensionFor(photo: PickedPhoto): string {
