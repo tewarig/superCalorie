@@ -3,10 +3,11 @@ import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold, useFonts as useDMS
 import { Fraunces_600SemiBold, useFonts as useFraunces } from "@expo-google-fonts/fraunces";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Onboarding } from "@/components/onboarding";
 import { getConnection, saveConnection, subscribeToConnection } from "@/lib/local-store";
+import { restoreSession } from "@/lib/session";
 
 const storybookEnabled = process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === "true";
 
@@ -36,6 +37,13 @@ function App() {
   // everyone who has already chosen. Subscribed so that changing the
   // connection from Sharing takes effect here too.
   const connection = useSyncExternalStore(subscribeToConnection, getConnection, getConnection);
+
+  // Verifies a stored token against the server, if there is one to verify.
+  // Runs after a connection exists, because which server to ask is part of
+  // the answer.
+  useEffect(() => {
+    if (connection && connection.mode !== "local") void restoreSession();
+  }, [connection]);
 
   return (
     <>

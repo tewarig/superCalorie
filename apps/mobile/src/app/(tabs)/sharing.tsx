@@ -9,10 +9,12 @@ import {
 import { AppButton } from "@supercalorie/ui/app-button";
 import { SectionHeading } from "@supercalorie/ui/section-heading";
 import { Surface } from "@supercalorie/ui/surface";
+import { Link } from "expo-router";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { clearConnection, getConnection, subscribeToConnection } from "@/lib/local-store";
+import { getSession, signOut, subscribeToSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
@@ -78,6 +80,7 @@ export default function SharingScreen() {
   const { snapshot, profile, ready } = useTracker(today);
   const [visibility, setVisibility] = useState<ProfileVisibility>(NOTHING_SHARED);
   const connection = useSyncExternalStore(subscribeToConnection, getConnection, getConnection);
+  const session = useSyncExternalStore(subscribeToSession, getSession, getSession);
 
   const preview = useMemo(
     () => (ready ? buildPublicStats(snapshot.entries, profile.dailyCalorieGoal, visibility, today) : {}),
@@ -119,13 +122,39 @@ export default function SharingScreen() {
                 ? "This device talks to the cloud instance. Claiming a handle is not wired up yet."
                 : "Everything stays on this device. Claiming a handle needs a server to publish to — connect one and these settings become your page at /u/your-handle."}
           </Text>
-          <View className="mt-4 flex-row gap-2">
+          <View className="mt-4 flex-row flex-wrap gap-2">
             <AppButton disabled size="sm" tone="secondary">
               Claim a handle
             </AppButton>
             <AppButton size="sm" tone="quiet" onPress={clearConnection}>
               {connection?.mode === "local" ? "Connect a server" : "Change server"}
             </AppButton>
+          </View>
+        </Surface>
+
+        <Surface className="gap-1">
+          <Text className="font-bold text-base text-ink">
+            {session ? `Signed in as ${session.user.email}` : "Not signed in"}
+          </Text>
+          <Text className="font-body text-sm text-muted">
+            {session
+              ? "Your log still lives on this device. The account is what lets it reach another one."
+              : "Optional. The app works fully without an account — signing in is for syncing and publishing."}
+          </Text>
+          <View className="mt-3 flex-row gap-2">
+            {session ? (
+              <AppButton size="sm" tone="quiet" onPress={() => void signOut()}>
+                Sign out
+              </AppButton>
+            ) : (
+              <Link asChild href="/sign-in">
+                <Pressable accessibilityRole="button">
+                  <View className="min-h-10 items-center justify-center rounded-full bg-moss px-4">
+                    <Text className="font-bold text-sm text-paper">Sign in</Text>
+                  </View>
+                </Pressable>
+              </Link>
+            )}
           </View>
         </Surface>
 

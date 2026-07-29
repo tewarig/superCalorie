@@ -88,12 +88,12 @@ rendered by anything. Leave them until the web look lands, then decide.
       importing a backup no longer resurrects a deleted entry; the server's
       `entry_deletions` table; and `GET /api/entries?since=` returning
       changes plus tombstones with a server-clock watermark. What is left is
-      the push half and the loop that drives it from the app — which needs
-      logging in first.
-- [ ] **Log in from the app.** Nothing in `apps/mobile` authenticates: no
-      sign-in screen, no token storage. `client.ts` and the bearer token in
-      `AuthResult` were designed for it. This blocks publishing and any
-      syncing, so it comes before either.
+      the push half — a bulk `POST` — and the loop that drives it from the
+      app. Logging in is done, so nothing blocks this now.
+- [x] **Log in from the app.** `src/app/sign-in.tsx` and `src/lib/session.ts`.
+      Token in the keychain, verified against the server on launch, cleared
+      locally even if sign-out fails. Signing in moves no data yet — that is
+      the sync loop.
 - [ ] **Web adopts the new look.** Summary-style layout, the shared design
       system components, and the sharing controls. Numeric cards rather than
       charts. Second-class by design: this should never block app work.
