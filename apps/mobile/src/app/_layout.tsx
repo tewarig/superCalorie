@@ -3,7 +3,10 @@ import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold, useFonts as useDMS
 import { Fraunces_600SemiBold, useFonts as useFraunces } from "@expo-google-fonts/fraunces";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useSyncExternalStore } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { Onboarding } from "@/components/onboarding";
+import { getConnection, saveConnection, subscribeToConnection } from "@/lib/local-store";
 
 const storybookEnabled = process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === "true";
 
@@ -24,10 +27,24 @@ export default function RootLayout() {
     return <StorybookUIRoot />;
   }
 
+  return <App />;
+}
+
+function App() {
+  // Read synchronously rather than in an effect: the file is tiny and local,
+  // and loading it asynchronously would flash the onboarding screen at
+  // everyone who has already chosen. Subscribed so that changing the
+  // connection from Sharing takes effect here too.
+  const connection = useSyncExternalStore(subscribeToConnection, getConnection, getConnection);
+
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#EFF4E9" } }} />
+      {connection === null ? (
+        <Onboarding onChoose={saveConnection} />
+      ) : (
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#EFF4E9" } }} />
+      )}
     </>
   );
 }

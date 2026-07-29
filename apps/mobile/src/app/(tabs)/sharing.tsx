@@ -9,9 +9,10 @@ import {
 import { AppButton } from "@supercalorie/ui/app-button";
 import { SectionHeading } from "@supercalorie/ui/section-heading";
 import { Surface } from "@supercalorie/ui/surface";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { clearConnection, getConnection, subscribeToConnection } from "@/lib/local-store";
 import { colors } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
@@ -76,6 +77,7 @@ export default function SharingScreen() {
   const today = todayISO();
   const { snapshot, profile, ready } = useTracker(today);
   const [visibility, setVisibility] = useState<ProfileVisibility>(NOTHING_SHARED);
+  const connection = useSyncExternalStore(subscribeToConnection, getConnection, getConnection);
 
   const preview = useMemo(
     () => (ready ? buildPublicStats(snapshot.entries, profile.dailyCalorieGoal, visibility, today) : {}),
@@ -105,14 +107,24 @@ export default function SharingScreen() {
         </View>
 
         <Surface>
-          <Text className="font-bold text-base text-ink">Nothing is published</Text>
-          <Text className="mt-1 font-body text-sm text-muted">
-            Claiming a handle needs a server to publish to. Connect this app to the cloud
-            instance or your own backend, and these settings become your page at /u/your-handle.
+          <Text className="font-bold text-base text-ink">
+            {connection?.mode === "local" || !connection
+              ? "Nothing is published"
+              : "Connected, not yet published"}
           </Text>
-          <View className="mt-4">
+          <Text className="mt-1 font-body text-sm text-muted">
+            {connection?.mode === "self-hosted"
+              ? `This device talks to ${connection.serverUrl}. Claiming a handle there is not wired up yet.`
+              : connection?.mode === "hosted"
+                ? "This device talks to the cloud instance. Claiming a handle is not wired up yet."
+                : "Everything stays on this device. Claiming a handle needs a server to publish to — connect one and these settings become your page at /u/your-handle."}
+          </Text>
+          <View className="mt-4 flex-row gap-2">
             <AppButton disabled size="sm" tone="secondary">
               Claim a handle
+            </AppButton>
+            <AppButton size="sm" tone="quiet" onPress={clearConnection}>
+              {connection?.mode === "local" ? "Connect a server" : "Change server"}
             </AppButton>
           </View>
         </Surface>

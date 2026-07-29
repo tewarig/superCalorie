@@ -57,11 +57,10 @@ rendered by anything. Leave them until the web look lands, then decide.
 - [x] **Macro split editor (mobile).** `src/app/goals.tsx`, reached from the
       Goals card on Summary. Presets plus per-macro adjustment; a pushed
       screen rather than a fifth tab, which would have crowded the bar.
-- [ ] **Onboarding on first launch (mobile).** Sign up / Try the cloud
-      instance / Skip locally, matching the web. Without it the app starts
-      local-only with no way to point at a self-hosted backend. `Connection`
-      and `baseUrlFor` in `packages/core/src/connection.ts` already model
-      this; the web's `onboarding.tsx` is the reference.
+- [x] **Onboarding on first launch (mobile).** Local / cloud instance /
+      self-hosted, gating the router in `_layout.tsx`. Changeable afterwards
+      from Sharing. The cloud option only appears when `EXPO_PUBLIC_HOSTED_URL`
+      is set, so it is hidden until an instance is actually published.
 - [ ] **Publishing from the app.** The Sharing tab has the visibility
       toggles and a preview built from the real `buildPublicStats`, but
       claiming a handle needs a server and the button says so. Wire it to

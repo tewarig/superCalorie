@@ -1,4 +1,4 @@
-import { emptySnapshot, parseJSON, type Snapshot } from "@supercalorie/core";
+import { emptySnapshot, parseJSON, type Connection, type Snapshot } from "@supercalorie/core";
 import { Directory, File, Paths } from "expo-file-system";
 
 /**
@@ -87,4 +87,76 @@ export async function readImportedFile(): Promise<{ text: string; name: string }
 
   const handle = new File(file.uri);
   return { text: await handle.text(), name: handle.name };
+}
+
+/* -------------------------------------------------------------------------
+ * Connection — which server this device talks to, if any.
+ *
+ * Kept in its own file rather than inside the snapshot: the snapshot is also
+ * the export format, and where *this* device syncs is a property of the
+ * device, not of the data. Exporting a log and importing it elsewhere must
+ * not drag the old server address along with it.
+ * ---------------------------------------------------------------------- */
+
+const CONNECTION_FILE = "connection.json";
+
+function connectionFile(): File {
+  return new File(Paths.document, CONNECTION_FILE);
+}
+
+/**
+ * The stored connection, or null when the choice has not been made yet.
+ *
+ * Null is what makes onboarding appear, so an unreadable or hand-edited file
+ * is treated as "not chosen" rather than being guessed at.
+ */
+export function loadConnection(): Connection | null {
+  const file = connectionFile();
+  if (!file.exists) return null;
+
+  try {
+    const raw: unknown = JSON.parse(file.textSync());
+    if (!raw || typeof raw !== "object") return null;
+    const candidate = raw as Partial<Connection>;
+    if (candidate.mode !== "local" && candidate.mode !== "hosted" && candidate.mode !== "self-hosted") {
+      return null;
+    }
+    return {
+      mode: candidate.mode,
+      serverUrl: typeof candidate.serverUrl === "string" ? candidate.serverUrl : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* The connection is read by the root layout and edited from Sharing, so it
+ * is exposed as an external store: both read the same value and both re-render
+ * when it changes, without threading a setter down through the router. */
+
+let cached: Connection | null | undefined;
+const listeners = new Set<() => void>();
+
+export function getConnection(): Connection | null {
+  if (cached === undefined) cached = loadConnection();
+  return cached;
+}
+
+export function subscribeToConnection(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function saveConnection(connection: Connection): void {
+  connectionFile().write(JSON.stringify(connection));
+  cached = connection;
+  for (const listener of listeners) listener();
+}
+
+/** Forgets the choice, so the next render asks again. Logged data is kept. */
+export function clearConnection(): void {
+  const file = connectionFile();
+  if (file.exists) file.delete();
+  cached = null;
+  for (const listener of listeners) listener();
 }
