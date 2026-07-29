@@ -29,3 +29,6 @@ npm-debug.log*
 # coverage output
 coverage/
 **/coverage/
+
+# Playwright MCP scratch output from browser-driven verification.
+.playwright-mcp/
