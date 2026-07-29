@@ -79,11 +79,14 @@ rendered by anything. Leave them until the web look lands, then decide.
       What is missing is reconciling that with a server when one is
       configured. Sketch, so this is not redesigned from scratch: entries are
       already immutable rows with a stable UUID and a `createdAt`, and
-      `mergeEntries` already dedupes by id, so a first cut is push-new,
-      pull-since, last-write-wins on the profile, with deletions needing a
-      tombstone the model does not yet carry. Server-side it is a
-      `GET /api/entries?since=` plus a bulk `POST`. Mobile only — the web
+      `mergeEntries` dedupes by id and now honours tombstones, so a first cut
+      is push-new, pull-since, last-write-wins on the profile. Server-side it
+      is a `GET /api/entries?since=` plus a bulk `POST`, and a tombstone table
+      so a delete on one device reaches the others. Mobile only — the web
       talks to the server directly and is second-class.
+
+      Done already: the `Deletion` tombstone in the snapshot (version 3), so
+      deleting an entry and then importing a backup no longer resurrects it.
 - [ ] **Log in from the app.** Nothing in `apps/mobile` authenticates: no
       sign-in screen, no token storage. `client.ts` and the bearer token in
       `AuthResult` were designed for it. This blocks publishing and any

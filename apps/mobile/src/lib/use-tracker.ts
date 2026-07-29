@@ -1,4 +1,5 @@
 import {
+  deleteEntry,
   emptySnapshot,
   mergeEntries,
   mergeSnapshot,
@@ -183,7 +184,9 @@ export function useTracker(date: string = todayISO()) {
             // An orphaned file is not worth failing the delete over.
           }
         }
-        return { ...current, entries: current.entries.filter((entry) => entry.id !== id) };
+        // deleteEntry, not a filter: it records the tombstone that stops the
+        // next import or sync from bringing the entry straight back.
+        return deleteEntry(current, id);
       });
     },
     [update],

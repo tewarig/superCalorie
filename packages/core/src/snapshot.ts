@@ -11,11 +11,30 @@ import { MEAL_TYPES } from "./types";
  */
 export interface Snapshot {
   /** Bumped when the shape changes, so an old file can be migrated. */
-  version: 2;
+  version: 3;
   profile: Profile;
   entries: FoodEntry[];
   /** Foods the user typed in themselves; the built-in library is not copied. */
   customFoods: Food[];
+  /** Entries deleted here, remembered so a merge cannot resurrect them. */
+  deletions: Deletion[];
+}
+
+/**
+ * A record that an entry was deleted, kept after the entry itself is gone.
+ *
+ * Without this, merging is strictly additive: delete a meal on your phone,
+ * import a backup or sync with a server that still has it, and it comes
+ * straight back with no way to tell it apart from a new entry. The tombstone
+ * is what makes a deletion survive the round trip.
+ *
+ * `deletedAt` is not used for conflict resolution yet — it is recorded now so
+ * that a later sync can decide between a delete and a re-add by time rather
+ * than by whoever spoke last.
+ */
+export interface Deletion {
+  id: string;
+  deletedAt: string;
 }
 
 export interface Profile {
@@ -25,14 +44,14 @@ export interface Profile {
   macroSplit: MacroSplit;
 }
 
-export const SNAPSHOT_VERSION = 2 as const;
+export const SNAPSHOT_VERSION = 3 as const;
 
 /**
  * Versions this app can read. Anything older is upgraded on import rather
  * than rejected — someone's year of logging should survive an app update,
  * and the only difference in v1 is a profile field with a sane default.
  */
-const READABLE_VERSIONS = [1, 2];
+const READABLE_VERSIONS = [1, 2, 3];
 
 export function emptySnapshot(): Snapshot {
   return {
@@ -40,6 +59,7 @@ export function emptySnapshot(): Snapshot {
     profile: { name: "", dailyCalorieGoal: 2000, macroSplit: DEFAULT_MACRO_SPLIT },
     entries: [],
     customFoods: [],
+    deletions: [],
   };
 }
 
@@ -91,6 +111,13 @@ export function parseJSON(text: string): Snapshot {
     entries: candidate.entries.map(normaliseEntry).filter((e): e is FoodEntry => e !== null),
     customFoods: Array.isArray(candidate.customFoods)
       ? candidate.customFoods.filter((food) => typeof food?.id === "string")
+      : [],
+    // Absent in versions 1 and 2, which had no concept of a deletion.
+    deletions: Array.isArray(candidate.deletions)
+      ? candidate.deletions.filter(
+          (deletion): deletion is Deletion =>
+            typeof deletion?.id === "string" && typeof deletion?.deletedAt === "string",
+        )
       : [],
   };
 }
@@ -228,7 +255,10 @@ export function parseCSV(text: string, makeId: () => string): FoodEntry[] {
  */
 export function mergeEntries(current: Snapshot, incoming: FoodEntry[]): ImportResult {
   const known = new Set(current.entries.map((entry) => entry.id));
-  const added = incoming.filter((entry) => !known.has(entry.id));
+  const deleted = new Set(current.deletions.map((deletion) => deletion.id));
+  // A tombstoned entry is skipped like a duplicate rather than re-added: the
+  // alternative is that every import undoes every delete.
+  const added = incoming.filter((entry) => !known.has(entry.id) && !deleted.has(entry.id));
 
   return {
     snapshot: {
@@ -239,6 +269,36 @@ export function mergeEntries(current: Snapshot, incoming: FoodEntry[]): ImportRe
     },
     added: added.length,
     skipped: incoming.length - added.length,
+  };
+}
+
+/** Union of two tombstone lists, keeping the earliest time seen for each id. */
+export function mergeDeletions(current: Deletion[], incoming: Deletion[]): Deletion[] {
+  const byId = new Map(current.map((deletion) => [deletion.id, deletion]));
+
+  for (const deletion of incoming) {
+    const existing = byId.get(deletion.id);
+    if (!existing || deletion.deletedAt < existing.deletedAt) byId.set(deletion.id, deletion);
+  }
+
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * Records an entry as deleted and removes it in one step.
+ *
+ * Callers should use this rather than filtering `entries` themselves, or the
+ * deletion is invisible to the next merge.
+ */
+export function deleteEntry(snapshot: Snapshot, id: string, now = new Date()): Snapshot {
+  if (!snapshot.entries.some((entry) => entry.id === id)) return snapshot;
+
+  return {
+    ...snapshot,
+    entries: snapshot.entries.filter((entry) => entry.id !== id),
+    deletions: mergeDeletions(snapshot.deletions, [
+      { id, deletedAt: now.toISOString() },
+    ]),
   };
 }
 
@@ -258,6 +318,10 @@ export function mergeSnapshot(current: Snapshot, incoming: Snapshot): ImportResu
         dailyCalorieGoal: current.profile.dailyCalorieGoal,
         macroSplit: current.profile.macroSplit,
       },
+      // Tombstones from both sides are kept. Dropping the incoming ones would
+      // let this device resurrect entries the other one deleted the next time
+      // the merge ran in the other direction.
+      deletions: mergeDeletions(current.deletions, incoming.deletions),
       customFoods: [
         ...current.customFoods,
         ...incoming.customFoods.filter((food) => !knownFoods.has(food.id)),

@@ -24,6 +24,9 @@ export async function GET(request: Request) {
     // Foods are resolved into each entry at log time, so an export needs no
     // separate library to be complete.
     customFoods: [],
+    // The server has no tombstone table yet — deletes remove the row outright
+    // — so an export carries none. A device importing this keeps its own.
+    deletions: [],
   };
 
   return Response.json(snapshot, {

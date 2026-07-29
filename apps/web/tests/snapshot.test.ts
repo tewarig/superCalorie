@@ -184,8 +184,8 @@ describe("JSON export and import", () => {
       expect(restored.profile.macroSplit).toEqual(DEFAULT_MACRO_SPLIT);
     });
 
-    it("round-trips back out as version 2", () => {
-      expect(JSON.parse(toJSON(parseJSON(v1))).version).toBe(2);
+    it("round-trips back out at the current version", () => {
+      expect(JSON.parse(toJSON(parseJSON(v1))).version).toBe(SNAPSHOT_VERSION);
     });
   });
 
