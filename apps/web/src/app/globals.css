@@ -1,52 +1,94 @@
 @import "tailwindcss";
 
 /*
- * Web-side mirror of packages/ui/src/tokens.ts. If you change a value
- * there, change it here too (a codegen step can replace this later).
+ * The design system's components live outside this app and are reached
+ * through a workspace symlink in node_modules, which Tailwind's automatic
+ * source detection skips. Without this, any class used only by a shared
+ * component — `bg-moss`, `bg-paper`, `rounded-card` — is never generated, and
+ * the component renders unstyled rather than failing loudly.
+ */
+@source "../../../../packages/ui/src";
+
+/*
+ * The design system palette. These values are the web mirror of
+ * packages/ui/theme.cjs, which the mobile Tailwind preset reads directly.
+ * Tailwind v4 is CSS-first and cannot require a JS theme, so the two are kept
+ * in step by tests/theme-parity.test.ts rather than by hand.
  */
 :root {
-  --cream: #faf5ec;
-  --parchment: #f3ecdd;
-  --sand: #e7dcc6;
-  --ink: #1c2a24;
-  --ink-soft: #44544c;
-  --ink-faint: #7a877f;
-  --leaf: #2f6b4f;
-  --leaf-deep: #1f4a36;
-  --leaf-bright: #3e8a66;
-  --mint: #dfede4;
-  --tangerine: #e8641c;
-  --tangerine-soft: #fbe3d2;
-  --berry: #a63d57;
-  --honey: #e3a82b;
+  --canvas: #EFF4E9;
+  --paper: #FFFDF6;
+  --ink: #16251F;
+  --muted: #63746B;
+  --line: #D4DFD2;
+  --moss: #285B43;
+  --moss-deep: #173B2C;
+  --moss-pale: #DDEBDD;
+  --citrus: #E97833;
+  --citrus-pale: #FBE3CE;
+  --berry: #A6435D;
+  --berry-pale: #F4DEE4;
+  --grain: #BE8128;
+  --grain-pale: #F7EACB;
+  --dial-track: #365746;
+  --dial-fill: #E9C157;
+  --dial-muted: #B4C7B9;
+  --dial-soft: #DDEBDD;
 }
 
 @theme inline {
-  --color-cream: var(--cream);
-  --color-parchment: var(--parchment);
-  --color-sand: var(--sand);
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
   --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-ink-faint: var(--ink-faint);
-  --color-leaf: var(--leaf);
-  --color-leaf-deep: var(--leaf-deep);
-  --color-leaf-bright: var(--leaf-bright);
-  --color-mint: var(--mint);
-  --color-tangerine: var(--tangerine);
-  --color-tangerine-soft: var(--tangerine-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-moss: var(--moss);
+  --color-moss-deep: var(--moss-deep);
+  --color-moss-pale: var(--moss-pale);
+  --color-citrus: var(--citrus);
+  --color-citrus-pale: var(--citrus-pale);
   --color-berry: var(--berry);
-  --color-honey: var(--honey);
+  --color-berry-pale: var(--berry-pale);
+  --color-grain: var(--grain);
+  --color-grain-pale: var(--grain-pale);
+  --color-dial-track: var(--dial-track);
+  --color-dial-fill: var(--dial-fill);
+  --color-dial-muted: var(--dial-muted);
+  --color-dial-soft: var(--dial-soft);
+
+  --radius-card: 28px;
+  --radius-control: 18px;
+
   --font-display: var(--font-display), "Georgia", serif;
   --font-body: var(--font-body), "Avenir Next", sans-serif;
+
+  /*
+   * Names the web app used before the palette was shared. They now resolve to
+   * the nearest design-system token, so existing pages pick up the unified
+   * colours without a rename. Prefer the names above in new markup; these are
+   * here to be deleted once nothing references them.
+   */
+  --color-cream: var(--canvas);
+  --color-parchment: var(--paper);
+  --color-sand: var(--line);
+  --color-ink-soft: var(--muted);
+  --color-ink-faint: var(--muted);
+  --color-leaf: var(--moss);
+  --color-leaf-deep: var(--moss-deep);
+  --color-leaf-bright: var(--moss);
+  --color-mint: var(--moss-pale);
+  --color-tangerine: var(--citrus);
+  --color-tangerine-soft: var(--citrus-pale);
+  --color-honey: var(--grain);
 }
 
 body {
-  background: var(--cream);
+  background: var(--canvas);
   color: var(--ink);
   font-family: var(--font-body), sans-serif;
 }
 
-/* Subtle paper grain over the cream background. */
+/* Subtle paper grain over the canvas background. */
 .grain::before {
   content: "";
   position: fixed;

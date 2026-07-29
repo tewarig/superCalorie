@@ -5,6 +5,38 @@
   "description": "superCalorie design system — shared tokens with platform-native components for React (web) and React Native (Expo).",
   "exports": {
     "./tokens": "./src/tokens.ts",
+    "./theme": "./theme.cjs",
+    "./tailwind-preset": "./tailwind-preset.cjs",
+    "./app-button": {
+      "react-native": "./src/app-button/AppButton.native.tsx",
+      "types": "./src/app-button/AppButton.web.tsx",
+      "default": "./src/app-button/AppButton.web.tsx"
+    },
+    "./calorie-dial": {
+      "react-native": "./src/calorie-dial/CalorieDial.native.tsx",
+      "types": "./src/calorie-dial/CalorieDial.web.tsx",
+      "default": "./src/calorie-dial/CalorieDial.web.tsx"
+    },
+    "./food-row": {
+      "react-native": "./src/food-row/FoodRow.native.tsx",
+      "types": "./src/food-row/FoodRow.web.tsx",
+      "default": "./src/food-row/FoodRow.web.tsx"
+    },
+    "./section-heading": {
+      "react-native": "./src/section-heading/SectionHeading.native.tsx",
+      "types": "./src/section-heading/SectionHeading.web.tsx",
+      "default": "./src/section-heading/SectionHeading.web.tsx"
+    },
+    "./segmented-control": {
+      "react-native": "./src/segmented-control/SegmentedControl.native.tsx",
+      "types": "./src/segmented-control/SegmentedControl.web.tsx",
+      "default": "./src/segmented-control/SegmentedControl.web.tsx"
+    },
+    "./surface": {
+      "react-native": "./src/surface/Surface.native.tsx",
+      "types": "./src/surface/Surface.web.tsx",
+      "default": "./src/surface/Surface.web.tsx"
+    },
     "./button": {
       "react-native": "./src/button/Button.native.tsx",
       "types": "./src/button/Button.web.tsx",
@@ -29,7 +61,11 @@
     }
   },
   "devDependencies": {
+    "@storybook/react-native": "^10.5.4",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^30.0.0",
     "@types/react": "^19",
+    "nativewind": "^4.2.6",
     "react": "^19",
     "react-native": "0.86.0",
     "typescript": "^5"

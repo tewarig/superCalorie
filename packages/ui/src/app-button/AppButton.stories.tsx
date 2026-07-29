@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-native";
-import { AppButton } from "./AppButton";
+import { AppButton } from "./AppButton.native";
 
 const meta = { title: "Primitives/AppButton", component: AppButton, args: { children: "Log food" } } satisfies Meta<typeof AppButton>;
 export default meta;

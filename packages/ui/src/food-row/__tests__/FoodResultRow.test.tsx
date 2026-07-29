@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import { FoodResultRow } from "./FoodRow";
+import { FoodResultRow } from "../FoodRow.native";
 
 /**
  * `render` is awaited throughout: it resolves rather than returning

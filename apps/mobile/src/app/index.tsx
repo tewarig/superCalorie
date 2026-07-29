@@ -14,7 +14,12 @@ import {
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AppButton, CalorieDial, FoodResultRow, LoggedFoodRow, SectionHeading, SegmentedControl, Surface } from "@/components/ui";
+import { AppButton } from "@supercalorie/ui/app-button";
+import { CalorieDial } from "@supercalorie/ui/calorie-dial";
+import { FoodResultRow, LoggedFoodRow } from "@supercalorie/ui/food-row";
+import { SectionHeading } from "@supercalorie/ui/section-heading";
+import { SegmentedControl } from "@supercalorie/ui/segmented-control";
+import { Surface } from "@supercalorie/ui/surface";
 import { photoUri } from "@/lib/local-store";
 import { pickPhoto, takePhoto, type PickedPhoto } from "@/lib/photo";
 import { useTracker } from "@/lib/use-tracker";
@@ -112,13 +117,13 @@ export default function TodayScreen() {
 
         <Surface>
           <Text className="font-bold text-xs uppercase tracking-[2px] text-muted">{query.trim() ? `Matches for “${query.trim()}”` : "Your usuals"}</Text>
-          {results.length === 0 ? <Text className="py-5 font-body text-sm text-muted">No matches. Try a different food name.</Text> : results.slice(0, 8).map((food) => <FoodResultRow key={food.id} meta={`${food.servingLabel} · ${food.calories} kcal`} name={food.name} source={SOURCE_LABELS[food.source]} onAdd={() => log(food, 1)} onHalf={() => log(food, 0.5)} />)}
+          {results.length === 0 ? <Text className="py-5 font-body text-sm text-muted">No matches. Try a different food name.</Text> : results.slice(0, 8).map((food, index) => <FoodResultRow key={food.id} divider={index > 0} meta={`${food.servingLabel} · ${food.calories} kcal`} name={food.name} source={SOURCE_LABELS[food.source]} onAdd={() => log(food, 1)} onHalf={() => log(food, 0.5)} />)}
         </Surface>
 
         {MEAL_TYPES.map((type) => {
           const items = day.entries.filter((entry) => entry.meal === type);
           const total = items.reduce((sum, entry) => sum + entry.calories, 0);
-          return <View key={type} className="gap-2"><SectionHeading detail={`${total} kcal`} title={MEAL_LABELS[type]} /><Surface>{items.length === 0 ? <Text className="py-2 font-body text-sm text-muted">Nothing logged yet.</Text> : items.map((entry) => { const [photoId, extension] = (entry.photoId ?? "").split("."); return <LoggedFoodRow key={entry.id} calories={entry.calories} meta={entry.quantity === 1 ? entry.servingLabel : `${entry.quantity} × ${entry.servingLabel}`} name={entry.name} photoUri={entry.photoId ? photoUri(photoId, extension ?? "jpg") : null} onRemove={() => tracker.removeEntry(entry.id)} />; })}</Surface></View>;
+          return <View key={type} className="gap-2"><SectionHeading detail={`${total} kcal`} title={MEAL_LABELS[type]} /><Surface>{items.length === 0 ? <Text className="py-2 font-body text-sm text-muted">Nothing logged yet.</Text> : items.map((entry, index) => { const [photoId, extension] = (entry.photoId ?? "").split("."); return <LoggedFoodRow key={entry.id} calories={entry.calories} divider={index > 0} meta={entry.quantity === 1 ? entry.servingLabel : `${entry.quantity} × ${entry.servingLabel}`} name={entry.name} photoUri={entry.photoId ? photoUri(photoId, extension ?? "jpg") : null} onRemove={() => tracker.removeEntry(entry.id)} />; })}</Surface></View>;
         })}
 
         <SectionHeading title="Your data" />
