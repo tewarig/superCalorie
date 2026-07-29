@@ -34,10 +34,18 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 # Build
 # ---------------------------------------------------------------------------
 FROM base AS build
-COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /repo/packages/core/node_modules ./packages/core/node_modules
-COPY --from=deps /repo/packages/ui/node_modules ./packages/ui/node_modules
+# The whole installed tree, rather than each node_modules by name.
+#
+# Which directories pnpm creates depends on the node linker, and this repo
+# uses hoisted (see pnpm-workspace.yaml — Metro needs it): third-party
+# packages all land in the root node_modules, while the workspace links stay
+# under apps/web/node_modules and the packages get no node_modules at all.
+# Naming them individually broke twice — first "packages/ui/node_modules: not
+# found", then "Can't resolve @supercalorie/core" once that copy was dropped.
+# Taking the tree as pnpm left it does not care about the layout.
+COPY --from=deps /repo ./
+# Sources last, so they overlay the manifest stubs. node_modules is in
+# .dockerignore, so this cannot clobber what was just copied.
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
