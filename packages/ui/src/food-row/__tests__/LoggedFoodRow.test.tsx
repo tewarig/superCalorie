@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import { LoggedFoodRow } from "./FoodRow";
+import { LoggedFoodRow } from "../FoodRow.native";
 
 /**
  * Split from FoodResultRow's tests deliberately: with both components
@@ -58,5 +58,20 @@ describe("logged food rows", () => {
     );
 
     expect(screen.getByLabelText("Banana photo")).toBeTruthy();
+  });
+
+  it("drops the divider on the first row of a meal", async () => {
+    const screen = await render(
+      <LoggedFoodRow
+        calories={105}
+        divider={false}
+        meta="1 medium"
+        name="Banana"
+        photoUri={null}
+        onRemove={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("105")).toBeTruthy();
   });
 });

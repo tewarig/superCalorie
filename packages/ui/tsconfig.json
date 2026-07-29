@@ -8,7 +8,9 @@
     "noEmit": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    // The native components are rendered by jest-expo from apps/mobile.
+    "types": ["jest"]
   },
-  "include": ["src"]
+  "include": ["src", "nativewind-env.d.ts", "theme.d.cts"]
 }

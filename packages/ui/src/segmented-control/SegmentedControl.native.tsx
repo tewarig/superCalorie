@@ -1,16 +1,9 @@
 import { Pressable, Text, View } from "react-native";
+import type { SegmentedControlProps } from "./types";
 
-export type Segment<T extends string> = { label: string; value: T };
+export type { Segment, SegmentedControlProps } from "./types";
 
-export function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly Segment<T>[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
+export function SegmentedControl<T extends string>({ options, value, onChange }: SegmentedControlProps<T>) {
   return (
     <View className="flex-row flex-wrap gap-2">
       {options.map((option) => {

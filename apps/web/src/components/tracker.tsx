@@ -13,11 +13,15 @@ import {
   type Food,
   type MealType,
 } from "@supercalorie/core";
+import { CalorieDial } from "@supercalorie/ui/calorie-dial";
+import { FoodResultRow, LoggedFoodRow } from "@supercalorie/ui/food-row";
+import { SectionHeading } from "@supercalorie/ui/section-heading";
+import { SegmentedControl } from "@supercalorie/ui/segmented-control";
+import { Surface } from "@supercalorie/ui/surface";
 import Link from "next/link";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { CalorieRing } from "@/components/calorie-ring";
 import { DataMenu } from "@/components/data-menu";
-import { LocalPhoto } from "@/components/local-photo";
+import { useLocalPhotoUrl } from "@/components/local-photo";
 import { Onboarding } from "@/components/onboarding";
 import {
   commitConnection,
@@ -68,8 +72,11 @@ export function Tracker() {
   );
 
   const targets = macroTargets(day.goal);
-  const over = day.totals.calories > day.goal;
   const isToday = date === todayISO();
+  const mealOptions = useMemo(
+    () => MEAL_TYPES.map((type) => ({ label: MEAL_LABELS[type], value: type })),
+    [],
+  );
 
   async function log(food: Food, quantity: number) {
     await tracker.logFood(food, quantity, meal, photo);
@@ -121,18 +128,13 @@ export function Tracker() {
               </button>
             </div>
 
-            <div className="mt-5 flex items-center gap-5">
-              <CalorieRing eaten={day.totals.calories} goal={day.goal} />
-              <div>
-                <p className="font-display text-2xl text-ink">
-                  {over ? `${day.totals.calories - day.goal} over` : `${day.remaining} left`}
-                </p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {day.entries.length === 0
-                    ? "Nothing logged yet."
-                    : `${day.entries.length} item${day.entries.length === 1 ? "" : "s"} logged`}
-                </p>
-              </div>
+            <div className="mt-5">
+              <CalorieDial eaten={day.totals.calories} goal={day.goal} />
+              <p className="mt-3 text-sm text-muted">
+                {day.entries.length === 0
+                  ? "Nothing logged yet."
+                  : `${day.entries.length} item${day.entries.length === 1 ? "" : "s"} logged`}
+              </p>
             </div>
 
             <div className="mt-6 flex flex-col gap-3">
@@ -183,20 +185,7 @@ export function Tracker() {
           <section className="rounded-3xl border border-sand bg-white p-6 shadow-[0_20px_50px_-32px_rgba(28,42,36,0.4)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-xl font-semibold text-ink">Log food</h2>
-              <div className="flex gap-1 rounded-full bg-parchment p-1">
-                {MEAL_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setMeal(type)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      meal === type ? "bg-leaf text-cream" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    {MEAL_LABELS[type]}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl onChange={setMeal} options={mealOptions} value={meal} />
             </div>
 
             <input
@@ -261,44 +250,24 @@ export function Tracker() {
               {query.trim() ? `Results for “${query.trim()}”` : "Your usuals"}
             </p>
 
-            <ul className="mt-2 max-h-80 divide-y divide-sand overflow-y-auto">
+            <div className="mt-2 max-h-80 overflow-y-auto">
               {results.length === 0 && (
-                <li className="py-6 text-center text-sm text-ink-faint">
+                <p className="py-6 text-center text-sm text-muted">
                   Nothing matched. Use “Add something not listed” to enter it by hand.
-                </li>
+                </p>
               )}
-              {results.map((food) => (
-                <li key={food.id} className="flex items-center gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">{food.name}</p>
-                    <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
-                      <span className="rounded bg-tangerine-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-tangerine">
-                        {SOURCE_LABELS[food.source]}
-                      </span>
-                      <span>
-                        {food.servingLabel} · {food.calories} kcal · P{food.protein} C{food.carbs} F
-                        {food.fat}
-                      </span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => log(food, 0.5)}
-                    title="Log half a serving"
-                    className="rounded-full border border-sand px-2.5 py-1 text-xs font-semibold text-ink-soft transition-colors hover:border-ink hover:text-ink"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => log(food, 1)}
-                    className="rounded-full bg-leaf px-4 py-1.5 text-sm font-semibold text-cream transition-colors hover:bg-leaf-deep"
-                  >
-                    Add
-                  </button>
-                </li>
+              {results.map((food, index) => (
+                <FoodResultRow
+                  divider={index > 0}
+                  key={food.id}
+                  meta={`${food.servingLabel} · ${food.calories} kcal · P${food.protein} C${food.carbs} F${food.fat}`}
+                  name={food.name}
+                  source={SOURCE_LABELS[food.source]}
+                  onAdd={() => log(food, 1)}
+                  onHalf={() => log(food, 0.5)}
+                />
               ))}
-            </ul>
+            </div>
           </section>
         </div>
 
@@ -308,48 +277,22 @@ export function Tracker() {
             const total = items.reduce((sum, entry) => sum + entry.calories, 0);
 
             return (
-              <div key={type} className="rounded-2xl border border-sand bg-white p-5">
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-display text-lg font-semibold text-ink">
-                    {MEAL_LABELS[type]}
-                  </h3>
-                  <span className="text-sm font-semibold tabular-nums text-ink-soft">
-                    {total} kcal
-                  </span>
-                </div>
-
-                {items.length === 0 ? (
-                  <p className="mt-3 text-sm text-ink-faint">Nothing yet.</p>
-                ) : (
-                  <ul className="mt-3 divide-y divide-sand">
-                    {items.map((entry) => (
-                      <li key={entry.id} className="group flex items-center gap-3 py-2.5">
-                        {entry.photoId && (
-                          <LocalPhoto photoId={entry.photoId} alt={`Photo of ${entry.name}`} />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-ink">{entry.name}</p>
-                          <p className="text-xs text-ink-faint">
-                            {entry.quantity === 1
-                              ? entry.servingLabel
-                              : `${entry.quantity} × ${entry.servingLabel}`}
-                          </p>
-                        </div>
-                        <span className="shrink-0 font-semibold tabular-nums text-ink">
-                          {entry.calories}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => tracker.removeEntry(entry.id)}
-                          aria-label={`Remove ${entry.name}`}
-                          className="shrink-0 rounded-full px-2 py-1 text-ink-faint opacity-0 transition-opacity hover:bg-parchment hover:text-ink group-hover:opacity-100 focus:opacity-100"
-                        >
-                          ✕
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div key={type}>
+                <SectionHeading detail={`${total} kcal`} title={MEAL_LABELS[type]} />
+                <Surface className="mt-2">
+                  {items.length === 0 ? (
+                    <p className="py-2 text-sm text-muted">Nothing yet.</p>
+                  ) : (
+                    items.map((entry, index) => (
+                      <EntryRow
+                        divider={index > 0}
+                        entry={entry}
+                        key={entry.id}
+                        onRemove={() => tracker.removeEntry(entry.id)}
+                      />
+                    ))
+                  )}
+                </Surface>
               </div>
             );
           })}
@@ -362,6 +305,37 @@ export function Tracker() {
         </section>
       </main>
     </div>
+  );
+}
+
+/**
+ * Bridges the web's photo storage to the shared row.
+ *
+ * LoggedFoodRow takes a URL because the mobile app keeps photos as files on
+ * disk; on the web they live in IndexedDB, so the id has to be resolved to an
+ * object URL first. Doing that in its own component keeps the hook out of the
+ * list callback, where it would be a conditional hook call.
+ */
+function EntryRow({
+  entry,
+  divider,
+  onRemove,
+}: {
+  entry: { id: string; name: string; calories: number; quantity: number; servingLabel: string; photoId: string | null };
+  divider: boolean;
+  onRemove: () => void;
+}) {
+  const photoUri = useLocalPhotoUrl(entry.photoId);
+
+  return (
+    <LoggedFoodRow
+      calories={entry.calories}
+      divider={divider}
+      meta={entry.quantity === 1 ? entry.servingLabel : `${entry.quantity} × ${entry.servingLabel}`}
+      name={entry.name}
+      photoUri={photoUri}
+      onRemove={onRemove}
+    />
   );
 }
 

@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import { SegmentedControl } from "./SegmentedControl";
+import { SegmentedControl } from "../SegmentedControl.native";
 
 describe("SegmentedControl", () => {
   it("marks the active segment and changes value", async () => {

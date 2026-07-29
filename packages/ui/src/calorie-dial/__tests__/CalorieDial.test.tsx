@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react-native";
-import { CalorieDial } from "./CalorieDial";
+import { CalorieDial } from "../CalorieDial.native";
 
 describe("CalorieDial", () => {
   it("shows remaining calories while on track", async () => {

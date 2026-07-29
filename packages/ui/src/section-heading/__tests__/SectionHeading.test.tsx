@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react-native";
-import { SectionHeading } from "./SectionHeading";
+import { SectionHeading } from "../SectionHeading.native";
 
 describe("SectionHeading", () => {
   it("renders with optional supporting detail", async () => {

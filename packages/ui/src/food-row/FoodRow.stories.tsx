@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-native";
-import { LoggedFoodRow, FoodResultRow } from "./FoodRow";
+import { LoggedFoodRow, FoodResultRow } from "./FoodRow.native";
 
 const meta = { title: "Nutrition/Food rows", component: FoodResultRow, args: { name: "Masoor dal", source: "Local", meta: "1 bowl · 232 kcal", onHalf: () => {}, onAdd: () => {} } } satisfies Meta<typeof FoodResultRow>;
 export default meta;

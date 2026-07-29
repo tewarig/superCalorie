@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import { AppButton } from "./AppButton";
+import { AppButton } from "../AppButton.native";
 
 describe("AppButton", () => {
   it.each(["primary", "secondary", "quiet", "danger"] as const)("calls its handler for the %s tone", async (tone) => {
