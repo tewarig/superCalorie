@@ -1,23 +1,13 @@
-# @supercalorie/mobile
+# superCalorie mobile
 
-Expo (SDK 57) app for iOS and Android, using expo-router. It renders with
-real React Native primitives — there is no react-native-web here; the web app
-is a separate Next.js project. See the [root README](../../README.md) for how
-one design system serves both.
+The Expo app is local-first: food logs, photos, imports, and exports work without an account or network connection.
 
-```sh
-pnpm --filter mobile dev     # then press i (iOS) or a (Android)
-pnpm --filter mobile lint
-```
+## Commands
 
-The app talks to the Next.js backend, so **start the web app first** — there
-is no local store to fall back on. It defaults to `localhost:3000` on the iOS
-simulator and `10.0.2.2:3000` on the Android emulator. On a physical device,
-point it at your machine:
+- `pnpm --filter mobile start` starts the tracker.
+- `pnpm --filter mobile storybook` starts the on-device component workshop. It is intentionally excluded from normal app bundles.
+- `pnpm --filter mobile test` runs the NativeWind component suite with a strict 100% coverage gate for `src/components/ui`.
 
-```sh
-EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 pnpm --filter mobile dev
-```
+## Design system
 
-The login screen prints whichever URL it resolved along the bottom, so a
-misconfigured address is obvious rather than mysterious.
+Mobile components live in `src/components/ui` and use NativeWind v4 with the `field notebook` token set in `tailwind.config.js`. New mobile controls should be composed from these primitives and should include a colocated `*.stories.tsx` file and test.

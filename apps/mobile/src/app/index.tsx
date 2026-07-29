@@ -11,30 +11,18 @@ import {
   type Food,
   type MealType,
 } from "@supercalorie/core";
-import { Button } from "@supercalorie/ui/button";
-import { color, fontSize, nutrition, radius, space } from "@supercalorie/ui/tokens";
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppButton, CalorieDial, FoodResultRow, LoggedFoodRow, SectionHeading, SegmentedControl, Surface } from "@/components/ui";
 import { photoUri } from "@/lib/local-store";
 import { pickPhoto, takePhoto, type PickedPhoto } from "@/lib/photo";
 import { useTracker } from "@/lib/use-tracker";
 
 const MACROS = [
-  { key: "protein", label: "Protein", tint: nutrition.protein },
-  { key: "carbs", label: "Carbs", tint: nutrition.carbs },
-  { key: "fat", label: "Fat", tint: nutrition.fat },
+  { key: "protein", label: "Protein", tone: "bg-berry", text: "text-berry" },
+  { key: "carbs", label: "Carbs", tone: "bg-grain", text: "text-grain" },
+  { key: "fat", label: "Fat", tone: "bg-moss", text: "text-moss" },
 ] as const;
 
 function shiftDate(iso: string, days: number): string {
@@ -46,31 +34,20 @@ export default function TodayScreen() {
   const [date, setDate] = useState(todayISO());
   const tracker = useTracker(date);
   const { day, profile } = tracker;
-
   const [query, setQuery] = useState("");
   const [meal, setMeal] = useState<MealType>(() => defaultMealForHour(new Date().getHours()));
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
 
   const results = useMemo(
-    () =>
-      query.trim()
-        ? searchFoods(query, tracker.snapshot.customFoods, 12)
-        : mostLoggedFoods(tracker.snapshot.entries, tracker.snapshot.customFoods),
+    () => query.trim() ? searchFoods(query, tracker.snapshot.customFoods, 12) : mostLoggedFoods(tracker.snapshot.entries, tracker.snapshot.customFoods),
     [query, tracker.snapshot],
   );
 
   if (!tracker.ready) {
-    return (
-      <SafeAreaView style={[styles.safeArea, styles.centered]}>
-        <ActivityIndicator color={color.primary} />
-      </SafeAreaView>
-    );
+    return <SafeAreaView className="flex-1 items-center justify-center bg-canvas"><ActivityIndicator color="#285B43" /></SafeAreaView>;
   }
 
   const targets = macroTargets(day.goal);
-  const eaten = day.totals.calories;
-  const over = eaten > day.goal;
-  const progress = day.goal > 0 ? Math.min(eaten / day.goal, 1) : 0;
 
   function log(food: Food, quantity: number) {
     tracker.logFood(food, quantity, meal, photo);
@@ -81,9 +58,7 @@ export default function TodayScreen() {
   async function attachPhoto(from: "camera" | "library") {
     const picked = from === "camera" ? await takePhoto() : await pickPhoto();
     if (picked) setPhoto(picked);
-    else if (from === "camera") {
-      Alert.alert("Camera unavailable", "Allow camera access in Settings, or choose a photo.");
-    }
+    else if (from === "camera") Alert.alert("Camera unavailable", "Allow camera access in Settings, or choose a photo.");
   }
 
   async function shareExport(format: "json" | "csv") {
@@ -99,364 +74,56 @@ export default function TodayScreen() {
     try {
       const result = await tracker.importFile();
       if (!result) return;
-      Alert.alert(
-        "Import complete",
-        result.added === 0
-          ? `Nothing new — all ${result.skipped} entries were already here.`
-          : `Added ${result.added} ${result.added === 1 ? "entry" : "entries"}.`,
-      );
+      Alert.alert("Import complete", result.added === 0 ? `Nothing new — all ${result.skipped} entries were already here.` : `Added ${result.added} ${result.added === 1 ? "entry" : "entries"}.`);
     } catch (cause) {
       Alert.alert("Import failed", cause instanceof Error ? cause.message : "Unreadable file.");
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.dateRow}>
-          <Pressable onPress={() => setDate(shiftDate(date, -1))} hitSlop={10}>
-            <Text style={styles.arrow}>←</Text>
-          </Pressable>
-          <Text style={styles.eyebrow}>{formatDateLabel(date)}</Text>
-          <Pressable
-            onPress={() => date !== todayISO() && setDate(shiftDate(date, 1))}
-            hitSlop={10}
-          >
-            <Text style={[styles.arrow, date === todayISO() && styles.arrowDisabled]}>→</Text>
-          </Pressable>
+    <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
+      <ScrollView contentContainerClassName="gap-4 px-5 pb-14 pt-3" keyboardShouldPersistTaps="handled">
+        <View className="flex-row items-center justify-between">
+          <Pressable accessibilityRole="button" accessibilityLabel="Previous day" className="h-11 w-11 items-center justify-center rounded-full bg-moss-pale" hitSlop={8} onPress={() => setDate(shiftDate(date, -1))}><Text className="font-display text-2xl text-moss">‹</Text></Pressable>
+          <View className="items-center"><Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">Food journal</Text><Text className="mt-1 font-display text-xl text-ink">{formatDateLabel(date)}</Text></View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Next day" className={`h-11 w-11 items-center justify-center rounded-full ${date === todayISO() ? "bg-line" : "bg-moss-pale"}`} disabled={date === todayISO()} hitSlop={8} onPress={() => setDate(shiftDate(date, 1))}><Text className={`font-display text-2xl ${date === todayISO() ? "text-muted opacity-40" : "text-moss"}`}>›</Text></Pressable>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.kcalRow}>
-            <Text style={styles.kcalBig}>{eaten}</Text>
-            <Text style={styles.kcalGoal}>/ {day.goal} kcal</Text>
-          </View>
-          <View style={styles.track}>
-            <View
-              style={[
-                styles.fill,
-                {
-                  width: `${progress * 100}%`,
-                  backgroundColor: over ? "#A63D57" : nutrition.calories,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.remaining}>
-            {over ? `${eaten - day.goal} kcal over goal` : `${day.remaining} kcal remaining`}
-          </Text>
+        <CalorieDial eaten={day.totals.calories} goal={day.goal} />
 
-          <View style={styles.macroRow}>
-            {MACROS.map((macro) => (
-              <View key={macro.key} style={styles.macroChip}>
-                <View style={[styles.macroDot, { backgroundColor: macro.tint }]} />
-                <Text style={styles.macroLabel}>
-                  {macro.label} {day.totals[macro.key]}/{targets[macro.key]}g
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.goalRow}>
-            <Text style={styles.goalLabel}>Daily goal</Text>
-            <TextInput
-              value={String(profile.dailyCalorieGoal)}
-              onChangeText={(text) => {
-                const next = Number(text.replace(/[^0-9]/g, ""));
-                if (Number.isFinite(next) && next > 0) tracker.setGoal(next);
-              }}
-              keyboardType="number-pad"
-              style={styles.goalInput}
-            />
-          </View>
+        <View className="flex-row gap-2">
+          {MACROS.map((macro) => <View key={macro.key} className="flex-1 rounded-control border border-line bg-paper p-3"><View className={`h-2 w-2 rounded-full ${macro.tone}`} /><Text className="mt-3 font-bold text-xs text-muted">{macro.label}</Text><Text className={`mt-1 font-display text-lg ${macro.text}`}>{day.totals[macro.key]}/{targets[macro.key]}g</Text></View>)}
         </View>
 
-        <Text style={styles.sectionTitle}>Log food</Text>
-        <View style={styles.mealTabs}>
-          {MEAL_TYPES.map((type) => (
-            <Pressable
-              key={type}
-              onPress={() => setMeal(type)}
-              style={[styles.mealTab, meal === type && styles.mealTabActive]}
-            >
-              <Text style={[styles.mealTabText, meal === type && styles.mealTabTextActive]}>
-                {MEAL_LABELS[type]}
-              </Text>
-            </Pressable>
-          ))}
+        <Surface className="flex-row items-center justify-between px-5 py-4">
+          <View><Text className="font-bold text-sm text-ink">Daily target</Text><Text className="mt-0.5 font-body text-xs text-muted">Change this whenever your plan changes.</Text></View>
+          <TextInput accessibilityLabel="Daily calorie target" className="min-w-20 rounded-control bg-moss-pale px-3 py-2 text-right font-bold text-base text-moss" keyboardType="number-pad" onChangeText={(text) => { const next = Number(text.replace(/[^0-9]/g, "")); if (Number.isFinite(next) && next > 0) tracker.setGoal(next); }} value={String(profile.dailyCalorieGoal)} />
+        </Surface>
+
+        <SectionHeading title="Log a meal" detail={MEAL_LABELS[meal]} />
+        <SegmentedControl options={MEAL_TYPES.map((type) => ({ label: MEAL_LABELS[type], value: type }))} value={meal} onChange={setMeal} />
+        <TextInput accessibilityLabel="Search foods" autoCorrect={false} className="rounded-card border border-line bg-paper px-5 py-4 font-body text-base text-ink" onChangeText={setQuery} placeholder="Search dal, banana, paneer…" placeholderTextColor="#63746B" value={query} />
+
+        <View className="flex-row flex-wrap items-center gap-2">
+          <AppButton size="sm" tone="secondary" onPress={() => attachPhoto("camera")}>Take photo</AppButton>
+          <AppButton size="sm" tone="quiet" onPress={() => attachPhoto("library")}>Choose photo</AppButton>
+          {photo ? <View className="flex-row items-center gap-2"><Image className="h-10 w-10 rounded-control border border-line" source={{ uri: photo.uri }} /><Pressable accessibilityRole="button" onPress={() => setPhoto(null)}><Text className="font-bold text-xs text-berry">Remove</Text></Pressable></View> : null}
         </View>
 
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search foods — “dal”, “banana”, “paneer”…"
-          placeholderTextColor={color.textFaint}
-          autoCorrect={false}
-          style={styles.search}
-        />
-
-        <View style={styles.photoRow}>
-          <Button size="sm" variant="outline" onPress={() => attachPhoto("camera")}>
-            Take photo
-          </Button>
-          <Button size="sm" variant="ghost" onPress={() => attachPhoto("library")}>
-            Choose
-          </Button>
-          {photo && (
-            <View style={styles.photoPreviewRow}>
-              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
-              <Pressable onPress={() => setPhoto(null)} hitSlop={8}>
-                <Text style={styles.removePhoto}>Remove</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.resultsLabel}>
-            {query.trim() ? `Results for “${query.trim()}”` : "Your usuals"}
-          </Text>
-          {results.length === 0 ? (
-            <Text style={styles.empty}>No matches.</Text>
-          ) : (
-            results.slice(0, 8).map((food, index) => (
-              <View key={food.id} style={[styles.foodRow, index > 0 && styles.rowBorder]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.foodName} numberOfLines={1}>
-                    {food.name}
-                  </Text>
-                  <Text style={styles.foodMeta}>
-                    <Text style={styles.sourceBadge}>{SOURCE_LABELS[food.source]}</Text>
-                    {"  "}
-                    {food.servingLabel} · {food.calories} kcal
-                  </Text>
-                </View>
-                <Button size="sm" variant="ghost" onPress={() => log(food, 0.5)}>
-                  ½
-                </Button>
-                <Button size="sm" onPress={() => log(food, 1)}>
-                  Add
-                </Button>
-              </View>
-            ))
-          )}
-        </View>
+        <Surface>
+          <Text className="font-bold text-xs uppercase tracking-[2px] text-muted">{query.trim() ? `Matches for “${query.trim()}”` : "Your usuals"}</Text>
+          {results.length === 0 ? <Text className="py-5 font-body text-sm text-muted">No matches. Try a different food name.</Text> : results.slice(0, 8).map((food) => <FoodResultRow key={food.id} meta={`${food.servingLabel} · ${food.calories} kcal`} name={food.name} source={SOURCE_LABELS[food.source]} onAdd={() => log(food, 1)} onHalf={() => log(food, 0.5)} />)}
+        </Surface>
 
         {MEAL_TYPES.map((type) => {
           const items = day.entries.filter((entry) => entry.meal === type);
           const total = items.reduce((sum, entry) => sum + entry.calories, 0);
-
-          return (
-            <View key={type}>
-              <View style={styles.mealHeader}>
-                <Text style={styles.sectionTitle}>{MEAL_LABELS[type]}</Text>
-                <Text style={styles.mealTotal}>{total} kcal</Text>
-              </View>
-              <View style={styles.card}>
-                {items.length === 0 ? (
-                  <Text style={styles.empty}>Nothing yet.</Text>
-                ) : (
-                  items.map((entry, index) => {
-                    const [photoId, extension] = (entry.photoId ?? "").split(".");
-                    const uri = entry.photoId ? photoUri(photoId, extension ?? "jpg") : null;
-
-                    return (
-                      <View key={entry.id} style={[styles.foodRow, index > 0 && styles.rowBorder]}>
-                        {uri && <Image source={{ uri }} style={styles.entryThumb} />}
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.foodName} numberOfLines={1}>
-                            {entry.name}
-                          </Text>
-                          <Text style={styles.foodMeta}>
-                            {entry.quantity === 1
-                              ? entry.servingLabel
-                              : `${entry.quantity} × ${entry.servingLabel}`}
-                          </Text>
-                        </View>
-                        <Text style={styles.entryKcal}>{entry.calories}</Text>
-                        <Pressable onPress={() => tracker.removeEntry(entry.id)} hitSlop={10}>
-                          <Text style={styles.removeIcon}>✕</Text>
-                        </Pressable>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-            </View>
-          );
+          return <View key={type} className="gap-2"><SectionHeading detail={`${total} kcal`} title={MEAL_LABELS[type]} /><Surface>{items.length === 0 ? <Text className="py-2 font-body text-sm text-muted">Nothing logged yet.</Text> : items.map((entry) => { const [photoId, extension] = (entry.photoId ?? "").split("."); return <LoggedFoodRow key={entry.id} calories={entry.calories} meta={entry.quantity === 1 ? entry.servingLabel : `${entry.quantity} × ${entry.servingLabel}`} name={entry.name} photoUri={entry.photoId ? photoUri(photoId, extension ?? "jpg") : null} onRemove={() => tracker.removeEntry(entry.id)} />; })}</Surface></View>;
         })}
 
-        <Text style={styles.sectionTitle}>Your data</Text>
-        <View style={styles.card}>
-          <Text style={styles.dataNote}>
-            Everything is stored on this device. Export to keep a backup or move to another one.
-          </Text>
-          <View style={styles.dataButtons}>
-            <Button size="sm" onPress={() => shareExport("json")}>
-              Export JSON
-            </Button>
-            <Button size="sm" variant="outline" onPress={() => shareExport("csv")}>
-              Export CSV
-            </Button>
-            <Button size="sm" variant="ghost" onPress={runImport}>
-              Import…
-            </Button>
-          </View>
-        </View>
+        <SectionHeading title="Your data" />
+        <Surface className="bg-moss-pale"><Text className="font-body text-sm leading-5 text-moss-deep">Your journal stays on this device. Export a copy before moving devices, or import a previous superCalorie export.</Text><View className="mt-4 flex-row flex-wrap gap-2"><AppButton size="sm" onPress={() => shareExport("json")}>Export JSON</AppButton><AppButton size="sm" tone="secondary" onPress={() => shareExport("csv")}>Export CSV</AppButton><AppButton size="sm" tone="quiet" onPress={runImport}>Import file</AppButton></View></Surface>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: color.background },
-  centered: { alignItems: "center", justifyContent: "center" },
-  scroll: { padding: space.xl, paddingBottom: space.xxxl, gap: space.md },
-  dateRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  arrow: { fontSize: fontSize.xl, color: color.textMuted, paddingHorizontal: space.sm },
-  arrowDisabled: { opacity: 0.25 },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    color: color.textFaint,
-  },
-  card: {
-    backgroundColor: color.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: color.border,
-    padding: space.lg,
-  },
-  kcalRow: { flexDirection: "row", alignItems: "baseline", gap: space.sm },
-  kcalBig: { fontSize: fontSize.display, fontWeight: "700", color: color.text },
-  kcalGoal: { fontSize: fontSize.md, color: color.textFaint, fontWeight: "500" },
-  track: {
-    height: 12,
-    borderRadius: radius.pill,
-    backgroundColor: color.surfaceMuted,
-    marginTop: space.md,
-    overflow: "hidden",
-  },
-  fill: { height: "100%", borderRadius: radius.pill },
-  remaining: {
-    marginTop: space.md,
-    fontSize: fontSize.md,
-    color: color.textMuted,
-    fontWeight: "500",
-  },
-  macroRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.lg },
-  macroChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    backgroundColor: color.surfaceMuted,
-    borderRadius: radius.pill,
-    paddingVertical: space.xs + 2,
-    paddingHorizontal: space.md,
-  },
-  macroDot: { width: 8, height: 8, borderRadius: 4 },
-  macroLabel: { fontSize: fontSize.xs, fontWeight: "600", color: color.textMuted },
-  goalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: space.lg,
-    paddingTop: space.md,
-    borderTopWidth: 1,
-    borderTopColor: color.border,
-  },
-  goalLabel: { fontSize: fontSize.sm, fontWeight: "600", color: color.textMuted },
-  goalInput: {
-    minWidth: 90,
-    textAlign: "right",
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: radius.sm,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    color: color.text,
-    fontSize: fontSize.md,
-  },
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: "700",
-    color: color.text,
-    marginTop: space.lg,
-    marginBottom: space.sm,
-  },
-  mealTabs: { flexDirection: "row", flexWrap: "wrap", gap: space.xs, marginBottom: space.sm },
-  mealTab: {
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    borderRadius: radius.pill,
-    backgroundColor: color.surfaceMuted,
-  },
-  mealTabActive: { backgroundColor: color.primary },
-  mealTabText: { fontSize: fontSize.xs, fontWeight: "600", color: color.textMuted },
-  mealTabTextActive: { color: color.textOnDark },
-  search: {
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: radius.md,
-    paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    fontSize: fontSize.md,
-    color: color.text,
-  },
-  photoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: space.sm,
-    marginVertical: space.sm,
-  },
-  photoPreviewRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  photoPreview: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  removePhoto: { fontSize: fontSize.xs, fontWeight: "600", color: color.textFaint },
-  resultsLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: "600",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: color.textFaint,
-    marginBottom: space.sm,
-  },
-  foodRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingVertical: space.md,
-  },
-  rowBorder: { borderTopWidth: 1, borderTopColor: color.border },
-  foodName: { fontSize: fontSize.md, fontWeight: "600", color: color.text },
-  foodMeta: { fontSize: fontSize.xs, color: color.textFaint, marginTop: 2 },
-  sourceBadge: {
-    fontSize: fontSize.xs,
-    fontWeight: "700",
-    color: color.primary,
-    textTransform: "uppercase",
-  },
-  entryThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  entryKcal: { fontSize: fontSize.md, fontWeight: "700", color: color.text },
-  removeIcon: { fontSize: fontSize.md, color: color.textFaint, paddingHorizontal: space.xs },
-  mealHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  mealTotal: { fontSize: fontSize.sm, fontWeight: "600", color: color.textMuted },
-  empty: { fontSize: fontSize.sm, color: color.textFaint, paddingVertical: space.sm },
-  dataNote: { fontSize: fontSize.sm, color: color.textMuted, marginBottom: space.md },
-  dataButtons: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-});

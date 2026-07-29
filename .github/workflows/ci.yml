@@ -40,15 +40,19 @@ jobs:
       - name: Publish the coverage summary
         if: always()
         run: |
-          if [ -f apps/web/coverage/coverage-summary.json ]; then
-            node -e "
-              const t = require('./apps/web/coverage/coverage-summary.json').total;
+          for app in web mobile; do
+            if [ ! -f "apps/$app/coverage/coverage-summary.json" ]; then
+              continue
+            fi
+            APP="$app" node -e "
+              const t = require('./apps/' + process.env.APP + '/coverage/coverage-summary.json').total;
               const row = (k) => \`| \${k} | \${t[k].pct}% | \${t[k].covered}/\${t[k].total} |\`;
+              console.log('## ' + process.env.APP + ' coverage');
               console.log('| Metric | % | Covered |');
               console.log('| --- | --- | --- |');
               for (const k of ['statements','branches','functions','lines']) console.log(row(k));
             " >> "$GITHUB_STEP_SUMMARY"
-          fi
+          done
 
   docker:
     name: Docker image builds
