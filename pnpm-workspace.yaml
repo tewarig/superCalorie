@@ -2,6 +2,19 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Metro resolves from the importing file's directory upwards and does not
+# follow pnpm's symlinked store, so a package present only as someone else's
+# transitive dependency is invisible to it. NativeWind depends on
+# react-native-css-interop that way: its babel preset rewrites JSX to import
+# react-native-css-interop/jsx-runtime, and bundling failed with "could not
+# be found within the project" even though pnpm had installed it correctly.
+#
+# Hoisting is what Expo's monorepo guide prescribes for exactly this. The
+# cost is the strictness of isolated installs — an undeclared dependency can
+# now resolve by accident — so CI still installs from the lockfile and runs
+# every workspace's typecheck, lint, test and build to catch that.
+nodeLinker: hoisted
+
 # pnpm 10 blocks dependency postinstall scripts unless they're listed here.
 # (pnpm 11 replaces onlyBuiltDependencies/ignoredBuiltDependencies with a
 # single `allowBuilds` map — this block needs rewriting on that upgrade.)
@@ -13,6 +26,11 @@ packages:
 #                  it to onlyBuiltDependencies if next/image is adopted.
 #   unrs-resolver  Native resolver for the ESLint import plugin, which falls
 #                  back to a JS implementation. Lint passes either way.
+#   esbuild        Its install script only verifies the platform binary, which
+#                  modern esbuild ships as an optional dependency and pnpm
+#                  installs on its own. Checked directly: esbuild.transform
+#                  compiles TypeScript with the script skipped.
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+  - esbuild
