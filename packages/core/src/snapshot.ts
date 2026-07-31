@@ -336,7 +336,13 @@ function clampGoal(value: unknown): number {
   return Math.min(Math.max(Math.round(goal), 800), 10000);
 }
 
-function normaliseEntry(raw: unknown): FoodEntry | null {
+/**
+ * Parses one entry out of an untrusted-shaped source — an import file or a
+ * device pushing its own data up to a server. Requires only an id, a date,
+ * and a numeric calorie count; everything else falls back to a sane default
+ * rather than rejecting the row, since a partial entry still beats losing it.
+ */
+export function normaliseEntry(raw: unknown): FoodEntry | null {
   if (!raw || typeof raw !== "object") return null;
   const entry = raw as Partial<FoodEntry>;
 

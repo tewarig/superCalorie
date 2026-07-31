@@ -160,3 +160,71 @@ export function clearConnection(): void {
   cached = null;
   for (const listener of listeners) listener();
 }
+
+/* -------------------------------------------------------------------------
+ * Sync watermark — how far this account's data has been pushed and pulled.
+ *
+ * Keyed by user id rather than one flat value: signing out and into a
+ * different account on the same device must not let one account's progress
+ * look like the other's.
+ * ---------------------------------------------------------------------- */
+
+export interface SyncWatermark {
+  /** Server-clock cursor for the next pull — the previous `syncedAt`. */
+  pulledThrough: string;
+  /** Local-clock cursor: entries created at or before this are already pushed. */
+  pushedEntriesThrough: string;
+  /** Local-clock cursor: deletions recorded at or before this are already pushed. */
+  pushedDeletionsThrough: string;
+}
+
+const SYNC_STATE_FILE = "sync-state.json";
+/** Before any account has ever synced, so the first round pushes and pulls everything. */
+const EPOCH = new Date(0).toISOString();
+
+function syncStateFile(): File {
+  return new File(Paths.document, SYNC_STATE_FILE);
+}
+
+function readSyncState(): Record<string, Partial<SyncWatermark>> {
+  const file = syncStateFile();
+  if (!file.exists) return {};
+
+  try {
+    const raw: unknown = JSON.parse(file.textSync());
+    return raw && typeof raw === "object" ? (raw as Record<string, Partial<SyncWatermark>>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Whether this account has ever completed a sync on this device.
+ *
+ * Used to decide whether a device joining an existing account for the first
+ * time should adopt the account's profile rather than pushing its own
+ * factory defaults over it — see sync.ts.
+ */
+export function hasSyncedBefore(userId: string): boolean {
+  return userId in readSyncState();
+}
+
+export function loadSyncWatermark(userId: string): SyncWatermark {
+  const stored = readSyncState()[userId];
+  return {
+    pulledThrough: typeof stored?.pulledThrough === "string" ? stored.pulledThrough : EPOCH,
+    pushedEntriesThrough:
+      typeof stored?.pushedEntriesThrough === "string" ? stored.pushedEntriesThrough : EPOCH,
+    pushedDeletionsThrough:
+      typeof stored?.pushedDeletionsThrough === "string" ? stored.pushedDeletionsThrough : EPOCH,
+  };
+}
+
+export function saveSyncWatermark(userId: string, watermark: SyncWatermark): void {
+  const all = readSyncState();
+  all[userId] = watermark;
+
+  const file = syncStateFile();
+  if (!file.exists) file.create({ overwrite: true });
+  file.write(JSON.stringify(all));
+}

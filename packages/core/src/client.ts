@@ -1,4 +1,6 @@
+import type { MacroSplit } from "./macros";
 import type { OwnProfile, ProfileVisibility } from "./public-profile";
+import type { Deletion } from "./snapshot";
 import type { AuthResult, DaySummary, Food, FoodEntry, MealType, User } from "./types";
 
 export class ApiError extends Error {
@@ -33,6 +35,26 @@ export interface LogEntryInput {
   fat?: number;
   /** From `uploadPhoto()`; attaches a picture of the meal to this entry. */
   photoId?: string | null;
+}
+
+export interface SyncPushInput {
+  entries: FoodEntry[];
+  deletions: Deletion[];
+}
+
+export interface SyncPushResult {
+  /** Entries written — malformed items in the batch are skipped, not rejected. */
+  entries: number;
+  deletions: number;
+  syncedAt: string;
+}
+
+export interface SyncPullResult {
+  since: string;
+  entries: FoodEntry[];
+  deletions: Deletion[];
+  /** Watermark for the next pull — from the server's clock, not the caller's. */
+  syncedAt: string;
 }
 
 export function createApiClient({ baseUrl = "", getToken }: ApiClientOptions = {}) {
@@ -121,6 +143,21 @@ export function createApiClient({ baseUrl = "", getToken }: ApiClientOptions = {
 
     deleteEntry: (id: string) =>
       request<{ ok: true }>(`/api/entries/${id}`, { method: "DELETE" }),
+
+    /** Everything created or deleted at or after `since` — the pull half of sync. */
+    pullSince: (since: string) =>
+      request<SyncPullResult>(`/api/entries?since=${encodeURIComponent(since)}`),
+
+    /** Pushes local work up. Safe to retry: both halves are idempotent. */
+    pushSync: (input: SyncPushInput) =>
+      request<SyncPushResult>("/api/entries/sync", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+
+    /** Writes both profile fields at once — the sync loop's own last-write-wins push. */
+    updateProfile: (input: { dailyCalorieGoal: number; macroSplit: MacroSplit }) =>
+      request<{ user: User }>("/api/auth/me", { method: "PATCH", body: JSON.stringify(input) }),
 
     /**
      * Uploads a meal photo and returns its id, to pass to `logEntry`.

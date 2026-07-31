@@ -99,6 +99,30 @@ function setSnapshot(next: Snapshot) {
   emit();
 }
 
+/**
+ * The seam the sync loop reads and writes through, so a pull it merges in
+ * lands in the same store every screen already reads — no screen ever sees
+ * a stale copy, and no second on-disk snapshot can drift from this one.
+ */
+export function getCurrentSnapshot(): Snapshot {
+  return current;
+}
+
+/** Notified on every local mutation, not just the initial load. */
+export function subscribeToSnapshot(listener: () => void): () => void {
+  return subscribe(listener);
+}
+
+/** Resolves once the on-device snapshot has been read, however many screens ask. */
+export function ensureTrackerLoaded(): Promise<void> {
+  return ensureLoaded();
+}
+
+/** Commits a snapshot the sync loop has already merged — same write path as any local edit. */
+export function applySyncResult(next: Snapshot): void {
+  setSnapshot(next);
+}
+
 /** Local-first data layer for the mobile app. No account, no server. */
 export function useTracker(date: string = todayISO()) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

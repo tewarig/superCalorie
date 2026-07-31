@@ -501,6 +501,27 @@ export const entries = {
     return true;
   },
 
+  /**
+   * Records a tombstone unconditionally, deleting the row too if this user
+   * still has one. Unlike `remove`, this does not require a row to have
+   * existed: a device that creates and deletes an entry entirely offline,
+   * before ever pushing it up, has no server-side row for `remove` to catch,
+   * but the delete still has to survive the push or the next pull from
+   * another device would resurrect it — except that never happens either,
+   * since that other device never received the entry in the first place.
+   * `deletedAt` is the client's own clock, not the server's, so that
+   * `mergeDeletions`'s earliest-wins rule stays meaningful across devices.
+   */
+  tombstone(userId: string, id: string, deletedAt: string): void {
+    const database = getDb();
+    database.prepare("DELETE FROM entries WHERE id = ? AND user_id = ?").run(id, userId);
+    database
+      .prepare(
+        "INSERT OR REPLACE INTO entry_deletions (id, user_id, deleted_at) VALUES (?, ?, ?)",
+      )
+      .run(id, userId, deletedAt);
+  },
+
   /** Tombstones for a user, oldest first, optionally only recent ones. */
   deletions(userId: string, since?: string): Deletion[] {
     const rows = since

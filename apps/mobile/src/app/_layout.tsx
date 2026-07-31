@@ -4,10 +4,11 @@ import { Fraunces_600SemiBold, useFonts as useFraunces } from "@expo-google-font
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useSyncExternalStore } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, AppState, View } from "react-native";
 import { Onboarding } from "@/components/onboarding";
 import { getConnection, saveConnection, subscribeToConnection } from "@/lib/local-store";
 import { restoreSession } from "@/lib/session";
+import { syncNow } from "@/lib/sync";
 
 const storybookEnabled = process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === "true";
 
@@ -40,10 +41,23 @@ function App() {
 
   // Verifies a stored token against the server, if there is one to verify.
   // Runs after a connection exists, because which server to ask is part of
-  // the answer.
+  // the answer. A sync follows once the session is settled — syncNow is a
+  // no-op by itself when there's nothing signed in to sync.
   useEffect(() => {
-    if (connection && connection.mode !== "local") void restoreSession();
+    if (connection && connection.mode !== "local") {
+      void restoreSession().then(() => void syncNow());
+    }
   }, [connection]);
+
+  // The other trigger: coming back to the app, not just opening it fresh.
+  // syncNow checks eligibility and de-dupes concurrent runs itself, so this
+  // can fire freely on every foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncNow();
+    });
+    return () => subscription.remove();
+  }, []);
 
   return (
     <>

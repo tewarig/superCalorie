@@ -5,6 +5,7 @@ import { PATCH as updateGoal } from "@/app/api/auth/me/route";
 import { POST as signup } from "@/app/api/auth/signup/route";
 import { GET as getDay } from "@/app/api/entries/route";
 import { DELETE as deleteEntry } from "@/app/api/entries/[id]/route";
+import { POST as pushSync } from "@/app/api/entries/sync/route";
 import { GET as getPhoto } from "@/app/api/photos/[id]/route";
 import { POST as uploadPhoto } from "@/app/api/photos/route";
 import { POST as logEntry } from "@/app/api/entries/route";
@@ -41,6 +42,7 @@ describe("malformed bodies on authenticated routes", () => {
   it.each([
     ["PATCH /api/auth/me", updateGoal, "/api/auth/me", "PATCH"],
     ["POST /api/entries", logEntry, "/api/entries", "POST"],
+    ["POST /api/entries/sync", pushSync, "/api/entries/sync", "POST"],
   ])("%s survives a broken JSON body", async (_name, handler, path, method) => {
     const { token } = await createAccount(`broken-${path.replace(/\W/g, "")}@example.com`);
     const response = await call(

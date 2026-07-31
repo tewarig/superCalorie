@@ -35,6 +35,12 @@ no notes is worse than a delayed one.
 
 ### Added
 
+- **Offline-first sync (mobile).** A device that has opted into a server now
+  reconciles its local snapshot with it: `POST /api/entries/sync` accepts a
+  bulk push of entries and tombstones, both idempotent, and the app pulls,
+  merges, and re-pushes on launch, on returning to the foreground, and
+  (debounced) after any local edit. Sync only ever runs when connected and
+  signed in; it never blocks or fails the local action that triggered it.
 - **Shareable public profiles.** Claim a handle and get a page at
   `/u/<handle>` with a GitHub-style contribution heatmap, most-eaten foods,
   lifetime totals and streak, and recent items. Every section is off until
@@ -51,7 +57,10 @@ no notes is worse than a delayed one.
 
 ### Changed
 
-- API contract at **0.2.0**, adding the profile and public-page endpoints.
+- API contract at **0.5.0**: 0.2.0 added the profile and public-page
+  endpoints, 0.3.0 added `macro_split`, 0.4.0 added tombstones and
+  `?since=` for pull, and 0.5.0 adds `POST /api/entries/sync` for the push
+  half of mobile sync.
 - Tests now run with coverage and **fail below 100%** on statements,
   branches, functions, and lines. Closing the gaps added tests for photo
   upload and retrieval, bulk export/import, the schema migration, session

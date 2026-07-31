@@ -11,7 +11,7 @@
  * break an existing integration.
  */
 
-export const API_VERSION = "0.4.0";
+export const API_VERSION = "0.5.0";
 
 const error = {
   type: "object",
@@ -321,6 +321,51 @@ export const openApiDocument = {
           "400": errorResponses["400"],
           "401": errorResponses["401"],
           "404": jsonResponse("No such food or photo on this account.", error),
+        },
+      },
+    },
+
+    "/api/entries/sync": {
+      post: {
+        tags: ["Entries"],
+        summary: "Push local changes",
+        description: [
+          "The bulk half of mobile sync — call this before `GET /api/entries?since=`",
+          "to send whatever a device created or deleted while it had no connection.",
+          "",
+          "Idempotent on both halves: entries insert by the id the client already",
+          "assigned, so a retried push cannot duplicate one, and tombstones are",
+          "upserted unconditionally — including for an entry this server never",
+          "saw, which is what a device that created and deleted something entirely",
+          "offline sends. Malformed items are skipped rather than failing the",
+          "whole batch.",
+        ].join("\n"),
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  entries: { type: "array", items: ref("FoodEntry") },
+                  deletions: { type: "array", items: ref("Deletion") },
+                },
+                required: ["entries", "deletions"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": jsonResponse("Accepted.", {
+            type: "object",
+            properties: {
+              entries: { type: "integer", description: "Entries written." },
+              deletions: { type: "integer", description: "Tombstones written." },
+              syncedAt: { type: "string", format: "date-time" },
+            },
+          }),
+          "400": errorResponses["400"],
+          "401": errorResponses["401"],
         },
       },
     },

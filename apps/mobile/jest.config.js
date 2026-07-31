@@ -20,6 +20,10 @@ module.exports = {
   coverageProvider: "v8",
   collectCoverageFrom: [
     "packages/ui/src/{activity-rings,app-button,bar-chart,calorie-dial,food-row,heatmap,section-heading,segmented-control,surface}/**/*.{ts,tsx}",
+    // The sync loop is the one piece of app runtime logic with its own
+    // tests today; the rest of apps/mobile/src is exercised by hand on
+    // device (see AGENTS.md) rather than under this runner.
+    "apps/mobile/src/lib/sync.ts",
     "!**/*.stories.tsx",
     // The web builds are React DOM. This runner cannot render them, so
     // measuring them here would report a gap it has no way to close.

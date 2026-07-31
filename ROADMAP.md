@@ -73,22 +73,35 @@ rendered by anything. Leave them until the web look lands, then decide.
       settable through `PATCH /api/auth/me`, carried by `/api/export`. API
       version 0.3.0. The apps do not call it yet — mobile has no login at
       all, which is the prerequisite below.
-- [ ] **Offline-first sync (mobile).** The app already works fully offline —
-      the on-device snapshot is the source of truth and every screen reads it.
-      What is missing is reconciling that with a server when one is
-      configured. Sketch, so this is not redesigned from scratch: entries are
-      already immutable rows with a stable UUID and a `createdAt`, and
-      `mergeEntries` dedupes by id and now honours tombstones, so a first cut
-      is push-new, pull-since, last-write-wins on the profile. Server-side it
-      is a bulk `POST` for pushing local work up. Mobile only — the web talks
-      to the server directly and is second-class.
+- [x] **Offline-first sync (mobile).** `POST /api/entries/sync` is the bulk
+      push half — idempotent on both sides, via `entries.createWithId` and
+      the new `entries.tombstone`, which upserts a deletion unconditionally
+      rather than only after actually deleting a row, so a device that
+      created and deleted an entry entirely offline still gets its delete
+      to stick. `apps/mobile/src/lib/sync.ts` is the loop: push whatever is
+      newer than the last-pushed watermark, pull via the existing
+      `?since=`, merge with `mergeEntries`/`mergeDeletions`, and only touch
+      the shared snapshot store when something actually changed. Triggers
+      on launch, on returning to the foreground, and (debounced) after any
+      local edit, via a subscription to the same snapshot store every
+      screen already reads — never blocks or throws on the local action
+      that provoked it.
 
-      Done already: the `Deletion` tombstone in the snapshot (version 3), so
-      importing a backup no longer resurrects a deleted entry; the server's
-      `entry_deletions` table; and `GET /api/entries?since=` returning
-      changes plus tombstones with a server-clock watermark. What is left is
-      the push half — a bulk `POST` — and the loop that drives it from the
-      app. Logging in is done, so nothing blocks this now.
+      The watermark lives in a new per-account file
+      (`apps/mobile/src/lib/local-store.ts`), keyed by user id so switching
+      accounts on one device can't confuse the two. The profile policy is a
+      deliberate first cut, not full last-write-wins: there is still no
+      `updated_at` on `users` to compare against, and nothing but the
+      mobile goals screen writes `dailyCalorieGoal`/`macroSplit` today. On a
+      device's first sync for an account, it can't truly tell "this account
+      already has a real goal on another device" apart from "I just signed
+      up" — so it approximates by checking whether the server's profile is
+      still exactly the factory default: if so, this device's own values
+      push up (protecting whatever it had before creating the account); if
+      not, the account's real values win locally (so a second device signing
+      in doesn't overwrite them with its own untouched defaults). Every sync
+      after the first pushes local up. Real timestamp-based resolution is
+      for whenever the web app grows its own editor for those fields.
 - [x] **Log in from the app.** `src/app/sign-in.tsx` and `src/lib/session.ts`.
       Token in the keychain, verified against the server on launch, cleared
       locally even if sign-out fails. Signing in moves no data yet — that is

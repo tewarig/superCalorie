@@ -1,7 +1,10 @@
+import type { Deletion, FoodEntry } from "@supercalorie/core";
 import { describe, expect, it } from "vitest";
 import { GET as listEntries, POST as logEntry } from "@/app/api/entries/route";
 import { DELETE as removeEntry } from "@/app/api/entries/[id]/route";
+import { POST as pushSync } from "@/app/api/entries/sync/route";
 import { GET as exportAll } from "@/app/api/export/route";
+import { GET as searchFoods } from "@/app/api/foods/route";
 import { call, createAccount, getRequest, jsonRequest } from "./helpers";
 
 /** Logs a custom entry and returns its id. */
@@ -11,6 +14,30 @@ async function log(token: string, name: string, date = "2026-07-26"): Promise<st
     jsonRequest("POST", "/api/entries", { name, calories: 200, date }, token),
   );
   return (await response.json()).entry.id;
+}
+
+/** An entry shaped the way a device's own snapshot holds it, ready to push. */
+function offlineEntry(overrides: Partial<FoodEntry> = {}): FoodEntry {
+  return {
+    id: overrides.id ?? "offline-1",
+    foodId: null,
+    name: "Homemade dal",
+    quantity: 1,
+    servingLabel: "1 bowl",
+    calories: 220,
+    protein: 12,
+    carbs: 28,
+    fat: 6,
+    meal: "dinner",
+    date: "2026-08-01",
+    createdAt: "2026-08-01T18:00:00.000Z",
+    photoId: null,
+    ...overrides,
+  };
+}
+
+function offlineDeletion(overrides: Partial<Deletion> = {}): Deletion {
+  return { id: "offline-1", deletedAt: "2026-08-01T19:00:00.000Z", ...overrides };
 }
 
 describe("GET /api/entries?since=", () => {
@@ -122,5 +149,168 @@ describe("tombstones", () => {
 
     expect(snapshot.deletions.map((d: { id: string }) => d.id)).toEqual([id]);
     expect(snapshot.entries).toEqual([]);
+  });
+});
+
+describe("POST /api/entries/sync", () => {
+  it("accepts a batch of entries and deletions in one call", async () => {
+    const { token } = await createAccount("push-batch@example.com");
+
+    const response = await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        { entries: [offlineEntry({ id: "a" }), offlineEntry({ id: "b" })], deletions: [] },
+        token,
+      ),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ entries: 2, deletions: 0 });
+    expect(body.syncedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    const day = await (await call(listEntries, getRequest("/api/entries?date=2026-08-01", token))).json();
+    expect(day.entries.map((e: FoodEntry) => e.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("tombstones an entry the server never received — created and deleted entirely offline", async () => {
+    const { token } = await createAccount("push-offline-delete@example.com");
+
+    const response = await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        { entries: [], deletions: [offlineDeletion({ id: "never-synced" })] },
+        token,
+      ),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ entries: 0, deletions: 1 });
+
+    const exported = await (await call(exportAll, getRequest("/api/export", token))).json();
+    expect(exported.deletions.map((d: Deletion) => d.id)).toEqual(["never-synced"]);
+    expect(exported.entries).toEqual([]);
+  });
+
+  it("removes a previously-synced entry when a later push tombstones it", async () => {
+    const { token } = await createAccount("push-then-delete@example.com");
+
+    await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        { entries: [offlineEntry({ id: "will-be-deleted" })], deletions: [] },
+        token,
+      ),
+    );
+    await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        { entries: [], deletions: [offlineDeletion({ id: "will-be-deleted" })] },
+        token,
+      ),
+    );
+
+    const day = await (await call(listEntries, getRequest("/api/entries?date=2026-08-01", token))).json();
+    expect(day.entries).toEqual([]);
+  });
+
+  it("is idempotent — retrying the same batch changes nothing", async () => {
+    const { token } = await createAccount("push-retry@example.com");
+    const batch = {
+      entries: [offlineEntry({ id: "dup" })],
+      deletions: [offlineDeletion({ id: "dup-deleted" })],
+    };
+
+    await call(pushSync, jsonRequest("POST", "/api/entries/sync", batch, token));
+    await call(pushSync, jsonRequest("POST", "/api/entries/sync", batch, token));
+
+    const day = await (await call(listEntries, getRequest("/api/entries?date=2026-08-01", token))).json();
+    expect(day.entries.map((e: FoodEntry) => e.id)).toEqual(["dup"]);
+
+    const exported = await (await call(exportAll, getRequest("/api/export", token))).json();
+    expect(exported.deletions.filter((d: Deletion) => d.id === "dup-deleted")).toHaveLength(1);
+  });
+
+  it("keeps a foodId this server actually has, and drops one it doesn't", async () => {
+    const { token } = await createAccount("push-foodid@example.com");
+    const { foods } = await (
+      await call(searchFoods, getRequest("/api/foods?q=Banana", token))
+    ).json();
+    const bananaId = foods[0].id;
+
+    await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        {
+          entries: [
+            offlineEntry({ id: "known-food", foodId: bananaId }),
+            offlineEntry({ id: "unknown-food", foodId: "does-not-exist-on-this-server" }),
+          ],
+          deletions: [],
+        },
+        token,
+      ),
+    );
+
+    const day = await (await call(listEntries, getRequest("/api/entries?date=2026-08-01", token))).json();
+    const byId = Object.fromEntries(day.entries.map((e: FoodEntry) => [e.id, e]));
+    expect(byId["known-food"].foodId).toBe(bananaId);
+    expect(byId["unknown-food"].foodId).toBeNull();
+  });
+
+  it("skips malformed entries and deletions rather than failing the whole batch", async () => {
+    const { token } = await createAccount("push-malformed@example.com");
+
+    const response = await call(
+      pushSync,
+      jsonRequest(
+        "POST",
+        "/api/entries/sync",
+        {
+          entries: [null, "nonsense", { id: "no-date-or-calories" }, offlineEntry({ id: "good" })],
+          deletions: [
+            null,
+            "nonsense",
+            { id: 42, deletedAt: "2026-08-01T19:00:00.000Z" },
+            { id: "no-deleted-at" },
+            offlineDeletion({ id: "good-deletion" }),
+          ],
+        },
+        token,
+      ),
+    );
+    const body = await response.json();
+
+    expect(body).toMatchObject({ entries: 1, deletions: 1 });
+  });
+
+  it("rejects a body without entries/deletions arrays", async () => {
+    const { token } = await createAccount("push-bad-body@example.com");
+
+    const response = await call(
+      pushSync,
+      jsonRequest("POST", "/api/entries/sync", { entries: [] }, token),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("401s without credentials", async () => {
+    const response = await call(
+      pushSync,
+      jsonRequest("POST", "/api/entries/sync", { entries: [], deletions: [] }),
+    );
+    expect(response.status).toBe(401);
   });
 });
