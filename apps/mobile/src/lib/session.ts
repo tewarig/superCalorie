@@ -1,4 +1,4 @@
-import { baseUrlFor, createApiClient, type ApiClient, type User } from "@supercalorie/core";
+import { ApiError, baseUrlFor, createApiClient, type ApiClient, type User } from "@supercalorie/core";
 import * as SecureStore from "expo-secure-store";
 import { getConnection } from "./local-store";
 
@@ -73,6 +73,10 @@ export function apiClient(): ApiClient {
  * have expired, been revoked, or belong to a server this device no longer
  * points at. A token that does not check out is discarded quietly, because
  * "you were signed out a while ago" is not worth an alert on launch.
+ *
+ * Only a 401 counts as "does not check out" — a network failure (no
+ * connectivity, server unreachable) leaves the token alone so a later launch
+ * with a connection can retry it, since the app is meant to work offline.
  */
 export function restoreSession(): Promise<void> {
   restoring ??= (async () => {
@@ -86,8 +90,10 @@ export function restoreSession(): Promise<void> {
           getToken: async () => token,
         }).me();
         session = { token, user };
-      } catch {
-        await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        }
       }
     }
 
