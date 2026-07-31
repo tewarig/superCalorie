@@ -1,16 +1,18 @@
 import type { HeatmapDay } from "@supercalorie/core";
+import { palette } from "../tokens";
+
+/** Grid geometry, shared so the web and native builds cannot shear apart. */
+export const CELL = 11;
+export const GAP = 3;
+export const CELL_RADIUS = 2;
+/** Width of the weekday-label gutter to the left of the grid. */
+export const LABEL_GUTTER = 32;
 
 /** Cell colours by level: nothing logged, then quarters of the daily goal. */
-export const LEVEL_COLOURS = [
-  "var(--color-moss-pale)",
-  "#C6DFCB",
-  "#8FC0A2",
-  "#548E6E",
-  "var(--color-moss)",
-] as const;
+export const LEVEL_COLOURS = [palette.mossPale, "#C6DFCB", "#8FC0A2", "#548E6E", palette.moss] as const;
 
-/** Native cannot read CSS variables, so it needs the literal values. */
-export const LEVEL_COLOURS_NATIVE = ["#DDEBDD", "#C6DFCB", "#8FC0A2", "#548E6E", "#285B43"] as const;
+/** Same ramp, exported separately so each platform's file only imports the one it renders. */
+export const LEVEL_COLOURS_NATIVE = LEVEL_COLOURS;
 
 export const WEEKDAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
 

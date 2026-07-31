@@ -1,9 +1,6 @@
 import type { HeatmapDay } from "@supercalorie/core";
 import { ScrollView, Text, View } from "react-native";
-import { LEVEL_COLOURS_NATIVE, WEEKDAY_LABELS, cellTitle, heatmapGrid } from "./geometry";
-
-const CELL = 11;
-const GAP = 3;
+import { CELL, CELL_RADIUS, GAP, LABEL_GUTTER, LEVEL_COLOURS_NATIVE, WEEKDAY_LABELS, cellTitle, heatmapGrid } from "./geometry";
 
 /**
  * A year of logging as a calendar grid, in the GitHub contributions style.
@@ -18,7 +15,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View>
-        <View className="flex-row" style={{ gap: GAP, paddingLeft: 32 }}>
+        <View className="flex-row" style={{ gap: GAP, paddingLeft: LABEL_GUTTER }}>
           {weeks.map((_, index) => (
             <Text className="font-body text-[9px] text-muted" key={index} style={{ width: CELL }}>
               {monthLabels.get(index) ?? ""}
@@ -27,7 +24,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
         </View>
 
         <View className="flex-row" style={{ gap: GAP, marginTop: GAP }}>
-          <View style={{ gap: GAP, width: 32 - 4, paddingRight: 4 }}>
+          <View style={{ gap: GAP, width: LABEL_GUTTER - 4, paddingRight: 4 }}>
             {WEEKDAY_LABELS.map((label, index) => (
               <Text
                 className="text-right font-body text-[9px] text-muted"
@@ -49,7 +46,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
                     key={rowIndex}
                     style={{
                       backgroundColor: day ? LEVEL_COLOURS_NATIVE[day.level] : "transparent",
-                      borderRadius: 2,
+                      borderRadius: CELL_RADIUS,
                       height: CELL,
                       width: CELL,
                     }}
