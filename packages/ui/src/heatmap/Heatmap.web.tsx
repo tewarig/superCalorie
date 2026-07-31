@@ -11,8 +11,12 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <div className="inline-flex flex-col gap-1">
-          <div className="flex gap-[3px] pl-8 text-[10px] text-muted">
+        <div className="inline-flex flex-col gap-xs">
+          {/* `pl-8`, `w-8` and `pr-1` below are the grid's own geometry rather
+              than layout spacing, so they stay in raw units: they have to keep
+              matching each other and the literals in Heatmap.native.tsx, not a
+              step on the spacing scale. */}
+          <div className="flex gap-[3px] pl-8 text-caption text-muted">
             {weeks.map((_, index) => (
               <span className="w-[11px] shrink-0" key={index}>
                 {monthLabels.get(index) ?? ""}
@@ -21,7 +25,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
           </div>
 
           <div className="flex gap-[3px]">
-            <div className="flex w-8 flex-col gap-[3px] pr-1 text-right text-[10px] text-muted">
+            <div className="flex w-8 flex-col gap-[3px] pr-1 text-right text-caption text-muted">
               {WEEKDAY_LABELS.map((label, index) => (
                 <span className="h-[11px] leading-[11px]" key={index}>
                   {label}
@@ -51,7 +55,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
 
       {/* Outside the scroll container: inside, it scrolls off with the grid
           and is invisible until you drag sideways. */}
-      <div className="flex items-center justify-end gap-1.5 pt-2 text-[10px] text-muted">
+      <div className="flex items-center justify-end gap-xs pt-sm text-caption text-muted">
         <span>Less</span>
         {LEVEL_COLOURS.map((colour, index) => (
           <span

@@ -13,7 +13,7 @@ import { Surface } from "@supercalorie/ui/surface";
 import { useMemo } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/lib/theme";
+import { role } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
 /** The last `count` days ending today, oldest first. */
@@ -27,8 +27,8 @@ function recentDays(today: string, count: number): string[] {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-1">
-      <Text className="font-bold text-[11px] uppercase tracking-wider text-muted">{label}</Text>
-      <Text className="mt-1 font-display text-2xl text-ink">{value}</Text>
+      <Text className="font-bold text-label uppercase tracking-label text-muted">{label}</Text>
+      <Text className="mt-xs font-display text-2xl text-ink">{value}</Text>
     </View>
   );
 }
@@ -57,22 +57,22 @@ export default function TrendsScreen() {
   if (!ready || !stats) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color={colors.moss} />
+        <ActivityIndicator color={role.primary} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2">
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-xxxl pt-sm">
         <View>
-          <Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">
+          <Text className="font-bold text-label uppercase tracking-label text-muted">
             All your data
           </Text>
-          <Text className="mt-1 font-display text-4xl text-ink">Trends</Text>
+          <Text className="mt-xs font-display text-4xl text-ink">Trends</Text>
         </View>
 
-        <Surface className="flex-row gap-3">
+        <Surface className="flex-row gap-md">
           <Stat label="Streak" value={`${stats.streak}d`} />
           <Stat label="Days logged" value={String(stats.lifetime.days)} />
           <Stat label="Entries" value={String(stats.lifetime.entries)} />
@@ -86,7 +86,7 @@ export default function TrendsScreen() {
         <SectionHeading detail="A year" title="History" />
         <Surface>
           {stats.lifetime.days === 0 ? (
-            <Text className="py-2 font-body text-sm text-muted">
+            <Text className="py-sm font-body text-sm text-muted">
               Log a few meals and a year of history builds up here.
             </Text>
           ) : (
@@ -97,11 +97,11 @@ export default function TrendsScreen() {
         <SectionHeading detail="Most logged" title="Top foods" />
         <Surface>
           {stats.top.length === 0 ? (
-            <Text className="py-2 font-body text-sm text-muted">Nothing logged yet.</Text>
+            <Text className="py-sm font-body text-sm text-muted">Nothing logged yet.</Text>
           ) : (
             stats.top.map((food, index) => (
               <View
-                className={`flex-row items-center gap-3 py-3 ${index > 0 ? "border-t border-line" : ""}`}
+                className={`flex-row items-center gap-md py-md ${index > 0 ? "border-t border-line" : ""}`}
                 key={food.name}
               >
                 <Text className="w-6 font-display text-lg text-muted">{index + 1}</Text>

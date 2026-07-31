@@ -35,9 +35,26 @@ The design system exposes each component through the package `exports` map:
 }
 ```
 
-Both implementations share one props contract and one `tokens.ts`, so call sites are identical on every platform.
+Both implementations share one props contract and one set of tokens, so call sites are identical on every platform.
 
-One caveat: the tokens are mirrored by hand as CSS variables in `apps/web/src/app/globals.css` so Tailwind can see them. Change a colour in `tokens.ts` and you must change it there too — a codegen step should replace this.
+### Design tokens
+
+Every colour, spacing step, radius and type size is defined once, in
+[`packages/ui/theme.cjs`](packages/ui/theme.cjs). Read the comment at the top of
+that file before adding a style — it covers which layer to reach for, and why
+`bg-primary` is right for a button while `bg-berry` is right for protein.
+
+It reaches the two apps by different routes, because Tailwind v4 is CSS-first
+and cannot `require` JavaScript:
+
+- **mobile** applies `@supercalorie/ui/tailwind-preset`, which reads the file directly
+- **web** mirrors it as CSS variables in `apps/web/src/app/globals.css`
+- **inline styles** on both platforms import `@supercalorie/ui/tokens`, the typed re-export
+
+The web mirror is the one copy that is written by hand, so
+`apps/web/tests/theme-parity.test.ts` fails if it drifts from the source. A
+codegen step should replace it eventually; until then, the test is what makes
+the duplication safe.
 
 ## Getting started
 

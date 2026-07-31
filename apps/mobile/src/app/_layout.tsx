@@ -8,11 +8,12 @@ import { ActivityIndicator, View } from "react-native";
 import { Onboarding } from "@/components/onboarding";
 import { getConnection, saveConnection, subscribeToConnection } from "@/lib/local-store";
 import { restoreSession } from "@/lib/session";
+import { role } from "@/lib/theme";
 
 const storybookEnabled = process.env.EXPO_PUBLIC_STORYBOOK_ENABLED === "true";
 
 function AppLoading() {
-  return <View className="flex-1 items-center justify-center bg-canvas"><ActivityIndicator color="#285B43" /></View>;
+  return <View className="flex-1 items-center justify-center bg-canvas"><ActivityIndicator color={role.primary} /></View>;
 }
 
 export default function RootLayout() {
@@ -51,7 +52,7 @@ function App() {
       {connection === null ? (
         <Onboarding onChoose={saveConnection} />
       ) : (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#EFF4E9" } }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: role.background } }} />
       )}
     </>
   );

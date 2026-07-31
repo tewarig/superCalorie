@@ -20,7 +20,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
       <View>
         <View className="flex-row" style={{ gap: GAP, paddingLeft: 32 }}>
           {weeks.map((_, index) => (
-            <Text className="font-body text-[9px] text-muted" key={index} style={{ width: CELL }}>
+            <Text className="font-body text-micro text-muted" key={index} style={{ width: CELL }}>
               {monthLabels.get(index) ?? ""}
             </Text>
           ))}
@@ -30,7 +30,7 @@ export function Heatmap({ days }: { days: readonly HeatmapDay[] }) {
           <View style={{ gap: GAP, width: 32 - 4, paddingRight: 4 }}>
             {WEEKDAY_LABELS.map((label, index) => (
               <Text
-                className="text-right font-body text-[9px] text-muted"
+                className="text-right font-body text-micro text-muted"
                 key={index}
                 style={{ height: CELL, lineHeight: CELL }}
               >

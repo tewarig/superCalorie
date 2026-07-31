@@ -14,16 +14,11 @@ import { Link } from "expo-router";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/lib/theme";
+import { macroColors, role } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
 /** Ring colours, outermost first: calories, then the three macros. */
-const RING_COLORS = {
-  calories: colors.citrus,
-  protein: colors.berry,
-  carbs: colors.grain,
-  fat: colors.moss,
-} as const;
+const RING_COLORS = macroColors;
 
 /** Seven days ending today, oldest first. */
 function lastSevenDays(today: string): string[] {
@@ -60,7 +55,7 @@ export default function SummaryScreen() {
   if (!ready) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color={colors.moss} />
+        <ActivityIndicator color={role.primary} />
       </SafeAreaView>
     );
   }
@@ -87,35 +82,39 @@ export default function SummaryScreen() {
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
       {/* Floats over the scroll rather than sitting in it, so logging is one
-          tap from anywhere on the screen. Placed top-left as asked; bottom
-          right is the easier reach one-handed if that turns out to matter. */}
+          tap from anywhere on the screen. Bottom right because that is where
+          the thumb already rests one-handed — it sat top-left first, which put
+          the app's most frequent action in the least reachable corner. Kept
+          clear of the tab bar by the ScrollView's bottom padding below. */}
       <Link asChild href="/log">
         <Pressable
           accessibilityLabel="Log food"
           accessibilityRole="button"
-          className="absolute left-5 top-2 z-10 h-14 w-14 items-center justify-center rounded-full bg-moss shadow-lg"
+          className="absolute bottom-gutter right-gutter z-10 h-fab w-fab items-center justify-center rounded-full bg-primary shadow-lg"
         >
           <Text className="font-display text-3xl text-paper">+</Text>
         </Pressable>
       </Link>
 
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2">
-        <View className="ml-16">
-          <Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">
+      {/* `pb-fab-clear` is the token for exactly this: enough room under a
+          scroll that its last card is not stuck behind the floating button. */}
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-fab-clear pt-sm">
+        <View>
+          <Text className="font-bold text-label uppercase tracking-label text-muted">
             {formatDateLabel(today)}
           </Text>
-          <Text className="mt-1 font-display text-4xl text-ink">Summary</Text>
+          <Text className="mt-xs font-display text-4xl text-ink">Summary</Text>
         </View>
 
-        <View className="overflow-hidden rounded-card bg-ink p-6">
-          <Text className="font-bold text-xs uppercase tracking-[3px] text-dial-muted">
+        <View className="overflow-hidden rounded-card bg-ink p-xl">
+          <Text className="font-bold text-xs uppercase tracking-eyebrow text-dial-muted">
             Today&apos;s fuel
           </Text>
 
-          <View className="mt-5 flex-row items-center gap-6">
+          <View className="mt-lg flex-row items-center gap-xl">
             <ActivityRings rings={allRings} size={150} strokeWidth={14} />
 
-            <View className="min-w-0 flex-1 gap-3">
+            <View className="min-w-0 flex-1 gap-md">
               {allRings.map((ring) => (
                 <View key={ring.key}>
                   <Text className="font-bold text-xs text-dial-muted">{ring.label}</Text>
@@ -134,15 +133,15 @@ export default function SummaryScreen() {
 
         <Link asChild href="/goals">
           <Pressable accessibilityRole="button">
-            <Surface className="flex-row items-center gap-3">
+            <Surface className="flex-row items-center gap-md">
               <View className="min-w-0 flex-1">
                 <Text className="font-bold text-base text-ink">Goals</Text>
-                <Text className="mt-0.5 font-body text-xs text-muted">
+                <Text className="mt-xxs font-body text-xs text-muted">
                   {day.goal} kcal · {profile.macroSplit.protein}/{profile.macroSplit.carbs}/
                   {profile.macroSplit.fat} split
                 </Text>
               </View>
-              <Text className="font-display text-2xl text-moss">›</Text>
+              <Text className="font-display text-2xl text-primary">›</Text>
             </Surface>
           </Pressable>
         </Link>
@@ -155,16 +154,16 @@ export default function SummaryScreen() {
         <SectionHeading detail={`${day.entries.length} today`} title="Logged" />
         <Surface>
           {day.entries.length === 0 ? (
-            <View className="gap-3 py-2">
+            <View className="gap-md py-sm">
               <Text className="font-body text-sm text-muted">
                 Nothing logged yet today.
               </Text>
-              <Link className="font-bold text-sm text-moss" href="/log">
+              <Link className="font-bold text-sm text-primary" href="/log">
                 Log your first meal →
               </Link>
             </View>
           ) : (
-            <View className="gap-1">
+            <View className="gap-xs">
               <Text className="font-display text-3xl text-ink">
                 {day.totals.calories}
                 <Text className="font-body text-sm text-muted"> kcal</Text>

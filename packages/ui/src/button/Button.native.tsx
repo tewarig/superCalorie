@@ -9,7 +9,7 @@ const sizeStyles: Record<ButtonSize, { container: ViewStyle; label: TextStyle }>
   },
   md: {
     container: { paddingVertical: space.md, paddingHorizontal: space.xl },
-    label: { fontSize: fontSize.md },
+    label: { fontSize: fontSize.base },
   },
   lg: {
     container: { paddingVertical: space.lg, paddingHorizontal: space.xxl },
@@ -32,7 +32,7 @@ function variantStyles(
     case "accent":
       return {
         container: {
-          backgroundColor: pressed ? color.accentPressed : color.accent,
+          backgroundColor: pressed ? color.secondaryPressed : color.secondary,
         },
         label: { color: color.surface },
       };

@@ -15,7 +15,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { clearConnection, getConnection, subscribeToConnection } from "@/lib/local-store";
 import { apiClient, getSession, signOut, subscribeToSession } from "@/lib/session";
-import { colors } from "@/lib/theme";
+import { role } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
 const SECTIONS: { key: keyof ProfileVisibility; label: string; detail: string }[] = [
@@ -51,15 +51,15 @@ function Toggle({
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: on }}
-      className="flex-row items-center gap-3 border-t border-line py-4"
+      className="flex-row items-center gap-md border-t border-line py-lg"
       onPress={onPress}
     >
       <View className="min-w-0 flex-1">
         <Text className="font-bold text-base text-ink">{label}</Text>
-        <Text className="mt-0.5 font-body text-xs text-muted">{detail}</Text>
+        <Text className="mt-xxs font-body text-xs text-muted">{detail}</Text>
       </View>
       <View
-        className={`h-7 w-12 justify-center rounded-full px-1 ${on ? "bg-moss" : "bg-line"}`}
+        className={`h-7 w-12 justify-center rounded-full px-xs ${on ? "bg-primary" : "bg-line"}`}
       >
         <View className={`h-5 w-5 rounded-full bg-paper ${on ? "self-end" : "self-start"}`} />
       </View>
@@ -146,7 +146,7 @@ export default function SharingScreen() {
   if (!ready) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color={colors.moss} />
+        <ActivityIndicator color={role.primary} />
       </SafeAreaView>
     );
   }
@@ -157,12 +157,12 @@ export default function SharingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2">
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-xxxl pt-sm">
         <View>
-          <Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">
+          <Text className="font-bold text-label uppercase tracking-label text-muted">
             Your public page
           </Text>
-          <Text className="mt-1 font-display text-4xl text-ink">Sharing</Text>
+          <Text className="mt-xs font-display text-4xl text-ink">Sharing</Text>
         </View>
 
         <Surface>
@@ -173,7 +173,7 @@ export default function SharingScreen() {
                 ? "Claimed, nothing visible yet"
                 : "Nothing is published"}
           </Text>
-          <Text className="mt-1 font-body text-sm text-muted">
+          <Text className="mt-xs font-body text-sm text-muted">
             {!session
               ? "Publishing needs an account on a server. Sign in below and you can claim a handle."
               : claimed
@@ -182,24 +182,24 @@ export default function SharingScreen() {
           </Text>
 
           {session ? (
-            <View className="mt-4 gap-2">
+            <View className="mt-lg gap-sm">
               <TextInput
                 accessibilityLabel="Handle"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+                className="rounded-control border border-line bg-canvas px-lg py-md font-body text-base text-ink"
                 // A handle is part of a public URL others may already have
                 // linked to, so changing it is not a casual edit.
                 editable={!claimed}
                 onChangeText={setHandle}
                 placeholder="your-handle"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={role.textFaint}
                 value={handle}
               />
               <Text className="font-body text-xs text-muted">
                 Lowercase letters, numbers and single dashes.
               </Text>
-              <View className="flex-row items-center gap-2">
+              <View className="flex-row items-center gap-sm">
                 <AppButton
                   disabled={handle.trim() === "" || saving}
                   size="sm"
@@ -207,19 +207,19 @@ export default function SharingScreen() {
                 >
                   {claimed ? "Save" : "Claim it"}
                 </AppButton>
-                {saving ? <ActivityIndicator color={colors.moss} /> : null}
+                {saving ? <ActivityIndicator color={role.primary} /> : null}
               </View>
             </View>
           ) : null}
 
-          <View className="mt-4 flex-row flex-wrap gap-2">
+          <View className="mt-lg flex-row flex-wrap gap-sm">
             <AppButton size="sm" tone="quiet" onPress={clearConnection}>
               {connection?.mode === "local" ? "Connect a server" : "Change server"}
             </AppButton>
           </View>
         </Surface>
 
-        <Surface className="gap-1">
+        <Surface className="gap-xs">
           <Text className="font-bold text-base text-ink">
             {session ? `Signed in as ${session.user.email}` : "Not signed in"}
           </Text>
@@ -228,7 +228,7 @@ export default function SharingScreen() {
               ? "Your log still lives on this device. The account is what lets it reach another one."
               : "Optional. The app works fully without an account — signing in is for syncing and publishing."}
           </Text>
-          <View className="mt-3 flex-row gap-2">
+          <View className="mt-md flex-row gap-sm">
             {session ? (
               <AppButton size="sm" tone="quiet" onPress={() => void signOut()}>
                 Sign out
@@ -236,7 +236,7 @@ export default function SharingScreen() {
             ) : (
               <Link asChild href="/sign-in">
                 <Pressable accessibilityRole="button">
-                  <View className="min-h-10 items-center justify-center rounded-full bg-moss px-4">
+                  <View className="min-h-10 items-center justify-center rounded-full bg-primary px-lg">
                     <Text className="font-bold text-sm text-paper">Sign in</Text>
                   </View>
                 </Pressable>
@@ -290,15 +290,15 @@ export default function SharingScreen() {
         <SectionHeading detail="What visitors see" title="Preview" />
         <Surface>
           {shown.length === 0 ? (
-            <Text className="py-2 font-body text-sm text-muted">
+            <Text className="py-sm font-body text-sm text-muted">
               With everything off, your page would be a 404 — the same response an unclaimed
               handle gives, so nobody can tell you have an account at all.
             </Text>
           ) : (
-            <View className="gap-3">
+            <View className="gap-md">
               {preview.today ? (
                 <View>
-                  <Text className="font-bold text-[11px] uppercase tracking-wider text-muted">
+                  <Text className="font-bold text-label uppercase tracking-label text-muted">
                     Today
                   </Text>
                   <Text className="font-display text-2xl text-ink">

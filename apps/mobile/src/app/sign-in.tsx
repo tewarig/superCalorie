@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getConnection } from "@/lib/local-store";
 import { signIn, signUp } from "@/lib/session";
-import { colors } from "@/lib/theme";
+import { role } from "@/lib/theme";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -42,16 +42,16 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas">
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-4" keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-xxxl pt-lg" keyboardShouldPersistTaps="handled">
         <View className="flex-row justify-end">
           <Pressable
             accessibilityLabel="Close"
             accessibilityRole="button"
-            className="rounded-full bg-moss-pale px-4 py-2"
+            className="rounded-full bg-primary-soft px-lg py-sm"
             hitSlop={8}
             onPress={() => router.back()}
           >
-            <Text className="font-bold text-sm text-moss">Close</Text>
+            <Text className="font-bold text-sm text-primary">Close</Text>
           </Pressable>
         </View>
 
@@ -59,7 +59,7 @@ export default function SignInScreen() {
           <Text className="font-display text-4xl text-ink">
             {mode === "sign-in" ? "Sign in" : "Create an account"}
           </Text>
-          <Text className="mt-2 font-body text-sm text-muted">
+          <Text className="mt-sm font-body text-sm text-muted">
             Optional. Your log already works without one — an account is for syncing to another
             device and publishing a profile.
           </Text>
@@ -68,21 +68,21 @@ export default function SignInScreen() {
         {local ? (
           <Surface>
             <Text className="font-bold text-base text-ink">No server configured</Text>
-            <Text className="mt-1 font-body text-sm text-muted">
+            <Text className="mt-xs font-body text-sm text-muted">
               This device is set to keep everything local, so there is nowhere to sign in to.
               Choose a server from Sharing first.
             </Text>
           </Surface>
         ) : (
-          <Surface className="gap-3">
+          <Surface className="gap-md">
             {mode === "sign-up" ? (
               <TextInput
                 accessibilityLabel="Name"
                 autoCapitalize="words"
-                className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+                className="rounded-control border border-line bg-canvas px-lg py-md font-body text-base text-ink"
                 onChangeText={setName}
                 placeholder="Name"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={role.textFaint}
                 value={name}
               />
             ) : null}
@@ -92,11 +92,11 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect={false}
-              className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+              className="rounded-control border border-line bg-canvas px-lg py-md font-body text-base text-ink"
               inputMode="email"
               onChangeText={setEmail}
               placeholder="you@example.com"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={role.textFaint}
               value={email}
             />
 
@@ -104,21 +104,21 @@ export default function SignInScreen() {
               accessibilityLabel="Password"
               autoCapitalize="none"
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+              className="rounded-control border border-line bg-canvas px-lg py-md font-body text-base text-ink"
               onChangeText={setPassword}
               placeholder="Password"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={role.textFaint}
               secureTextEntry
               value={password}
             />
 
-            {error ? <Text className="font-body text-sm text-berry">{error}</Text> : null}
+            {error ? <Text className="font-body text-sm text-danger">{error}</Text> : null}
 
-            <View className="flex-row items-center gap-3">
+            <View className="flex-row items-center gap-md">
               <AppButton disabled={!canSubmit} onPress={submit}>
                 {mode === "sign-in" ? "Sign in" : "Create account"}
               </AppButton>
-              {busy ? <ActivityIndicator color={colors.moss} /> : null}
+              {busy ? <ActivityIndicator color={role.primary} /> : null}
             </View>
           </Surface>
         )}
@@ -130,7 +130,7 @@ export default function SignInScreen() {
             setError(null);
           }}
         >
-          <Text className="text-center font-bold text-sm text-moss">
+          <Text className="text-center font-bold text-sm text-primary">
             {mode === "sign-in" ? "No account yet? Create one" : "Already have an account? Sign in"}
           </Text>
         </Pressable>

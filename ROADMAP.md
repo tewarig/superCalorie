@@ -66,6 +66,33 @@ rendered by anything. Leave them until the web look lands, then decide.
       than guessing. `isPublic` is a separate master switch.
 - [ ] **Avatar upload from the app.** The only part of publishing still
       missing; needs the photo endpoint wired from mobile.
+- [ ] **Summary screen visual pass (mobile).** The log button has moved to the
+      bottom right, where the thumb actually is, and the spacing values now go
+      through the design tokens. What is still wrong is the composition rather
+      than the numbers: the eyebrow-plus-title header, the dark rings card, the
+      Goals row and the two chart sections all carry similar weight, so nothing
+      leads and the screen reads flat and cramped. Deferred on purpose — it
+      wants a design decision about hierarchy, not another round of nudging
+      padding. Do this before "Web adopts the new look", so the web copies a
+      layout worth copying.
+- [ ] **Dedupe Heatmap grid geometry.** `packages/ui/src/heatmap/`. `CELL`/`GAP`
+      and the label-gutter width live as constants in `Heatmap.native.tsx` but
+      are restated as literal Tailwind classes (`h-[11px]`, `pl-8`, `gap-[3px]`,
+      …) in `Heatmap.web.tsx`, so the two can drift. Move the shared numbers
+      into `geometry.ts` and read them from both. Also pull the two palette
+      endpoints of `LEVEL_COLOURS`/`LEVEL_COLOURS_NATIVE` from the design
+      tokens instead of restating their hexes — the three interpolated greens
+      in between are heatmap-specific and can stay literal. In progress in a
+      background session (task_7d43f18f).
+- [ ] **Extract the eyebrow-label component.** The small uppercase label above
+      a screen title (`text-label uppercase tracking-label text-muted`, plus a
+      darker `tracking-eyebrow`/`text-dial-muted` variant on the ink cards) is
+      copy-pasted across `(tabs)/index.tsx`, `(tabs)/trends.tsx`,
+      `(tabs)/sharing.tsx`, `goals.tsx`, `log.tsx`, `onboarding.tsx`, and the
+      calorie dial. Wants a component next to `SectionHeading` in
+      `packages/ui/src/section-heading/`, same `.native`/`.web` split, with a
+      tone prop for the light/dark cases rather than two components. In
+      progress in a background session (task_1fe2888f).
 
 ## Next
 
@@ -88,7 +115,8 @@ rendered by anything. Leave them until the web look lands, then decide.
       `entry_deletions` table; and `GET /api/entries?since=` returning
       changes plus tombstones with a server-clock watermark. What is left is
       the push half — a bulk `POST` — and the loop that drives it from the
-      app. Logging in is done, so nothing blocks this now.
+      app. Logging in is done, so nothing blocks this now. In progress in a
+      background session (task_baa55039).
 - [x] **Log in from the app.** `src/app/sign-in.tsx` and `src/lib/session.ts`.
       Token in the keychain, verified against the server on launch, cleared
       locally even if sign-out fails. Signing in moves no data yet — that is

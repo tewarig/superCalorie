@@ -6,7 +6,7 @@ import type { ButtonProps, ButtonSize, ButtonVariant } from "./types";
 
 const sizeStyles: Record<ButtonSize, CSSProperties> = {
   sm: { padding: `${space.sm}px ${space.lg}px`, fontSize: fontSize.sm },
-  md: { padding: `${space.md}px ${space.xl}px`, fontSize: fontSize.md },
+  md: { padding: `${space.md}px ${space.xl}px`, fontSize: fontSize.base },
   lg: { padding: `${space.lg}px ${space.xxl}px`, fontSize: fontSize.lg },
 };
 
@@ -20,7 +20,7 @@ function variantStyles(variant: ButtonVariant, active: boolean): CSSProperties {
       };
     case "accent":
       return {
-        backgroundColor: active ? color.accentPressed : color.accent,
+        backgroundColor: active ? color.secondaryPressed : color.secondary,
         color: color.surface,
         border: "1px solid transparent",
       };

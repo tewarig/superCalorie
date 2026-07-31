@@ -13,15 +13,11 @@ import { Surface } from "@supercalorie/ui/surface";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/lib/theme";
+import { macroColors, role } from "@/lib/theme";
 import { useTracker } from "@/lib/use-tracker";
 
-/** Ring colours, matching the Summary screen so a macro reads the same everywhere. */
-const MACRO_COLORS: Record<MacroKey, string> = {
-  protein: colors.berry,
-  carbs: colors.grain,
-  fat: colors.moss,
-};
+/** Matching the Summary screen so a macro reads the same everywhere. */
+const MACRO_COLORS: Record<MacroKey, string> = macroColors;
 
 /** How far one tap moves a macro. Ten is the granularity people think in. */
 const STEP = 5;
@@ -40,8 +36,8 @@ function MacroRow({
   const color = MACRO_COLORS[macroKey];
 
   return (
-    <View className="border-t border-line py-4">
-      <View className="flex-row items-center gap-3">
+    <View className="border-t border-line py-lg">
+      <View className="flex-row items-center gap-md">
         <View className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
         <Text className="min-w-0 flex-1 font-bold text-base text-ink">
           {MACRO_LABELS[macroKey]}
@@ -52,14 +48,14 @@ function MacroRow({
         <Text className="w-16 text-right font-body text-sm text-muted">{grams} g</Text>
       </View>
 
-      <View className="mt-3 flex-row items-center gap-3">
+      <View className="mt-md flex-row items-center gap-md">
         <Pressable
           accessibilityLabel={`Decrease ${MACRO_LABELS[macroKey]}`}
           accessibilityRole="button"
-          className="h-9 w-9 items-center justify-center rounded-full bg-moss-pale"
+          className="h-9 w-9 items-center justify-center rounded-full bg-primary-soft"
           onPress={() => onChange(percent - STEP)}
         >
-          <Text className="font-bold text-base text-moss">−</Text>
+          <Text className="font-bold text-base text-primary">−</Text>
         </Pressable>
 
         {/* The bar is the readout, not a control: dragging a true slider needs
@@ -75,10 +71,10 @@ function MacroRow({
         <Pressable
           accessibilityLabel={`Increase ${MACRO_LABELS[macroKey]}`}
           accessibilityRole="button"
-          className="h-9 w-9 items-center justify-center rounded-full bg-moss-pale"
+          className="h-9 w-9 items-center justify-center rounded-full bg-primary-soft"
           onPress={() => onChange(percent + STEP)}
         >
-          <Text className="font-bold text-base text-moss">+</Text>
+          <Text className="font-bold text-base text-primary">+</Text>
         </Pressable>
       </View>
     </View>
@@ -92,7 +88,7 @@ export default function GoalsScreen() {
   if (!ready) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color={colors.moss} />
+        <ActivityIndicator color={role.primary} />
       </SafeAreaView>
     );
   }
@@ -105,25 +101,25 @@ export default function GoalsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2" keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-xxxl pt-sm" keyboardShouldPersistTaps="handled">
         <View>
-          <Text className="font-bold text-[11px] uppercase tracking-[2px] text-muted">
+          <Text className="font-bold text-label uppercase tracking-label text-muted">
             What you are aiming for
           </Text>
-          <Text className="mt-1 font-display text-4xl text-ink">Goals</Text>
+          <Text className="mt-xs font-display text-4xl text-ink">Goals</Text>
         </View>
 
         <SectionHeading detail="Per day" title="Calories" />
         <Surface className="flex-row items-center justify-between">
           <View className="min-w-0 flex-1">
             <Text className="font-bold text-base text-ink">Daily target</Text>
-            <Text className="mt-0.5 font-body text-xs text-muted">
+            <Text className="mt-xxs font-body text-xs text-muted">
               Everything below is a share of this.
             </Text>
           </View>
           <TextInput
             accessibilityLabel="Daily calorie target"
-            className="min-w-24 rounded-control bg-moss-pale px-3 py-2 text-right font-bold text-base text-moss"
+            className="min-w-24 rounded-control bg-primary-soft px-md py-sm text-right font-bold text-base text-primary"
             keyboardType="number-pad"
             // Held as text while editing so the field can be cleared; an
             // empty box parsed as 0 would clamp the goal out from under you
@@ -143,14 +139,14 @@ export default function GoalsScreen() {
           title="Macro split"
         />
 
-        <View className="flex-row flex-wrap gap-2">
+        <View className="flex-row flex-wrap gap-sm">
           {MACRO_PRESETS.map((preset) => {
             const active = activePreset?.name === preset.name;
             return (
               <Pressable
                 accessibilityRole="radio"
                 accessibilityState={{ checked: active }}
-                className={`rounded-full px-4 py-2.5 ${active ? "bg-moss" : "border border-line bg-paper"}`}
+                className={`rounded-full px-lg py-sm ${active ? "bg-primary" : "border border-line bg-paper"}`}
                 key={preset.name}
                 onPress={() => setMacroSplit(preset.split)}
               >
@@ -173,8 +169,8 @@ export default function GoalsScreen() {
             />
           ))}
 
-          <View className="flex-row items-center justify-between border-t border-line pt-4">
-            <Text className="font-bold text-xs uppercase tracking-wider text-muted">Total</Text>
+          <View className="flex-row items-center justify-between border-t border-line pt-lg">
+            <Text className="font-bold text-xs uppercase tracking-label text-muted">Total</Text>
             {/* Always 100 by construction — adjustSplit takes the difference
                 from the other two. Shown so the arithmetic is visible rather
                 than something you have to trust. */}
@@ -186,12 +182,12 @@ export default function GoalsScreen() {
           <Text className="font-bold text-base text-ink">
             {targets.protein} g protein · {targets.carbs} g carbs · {targets.fat} g fat
           </Text>
-          <Text className="mt-1 font-body text-xs text-muted">
+          <Text className="mt-xs font-body text-xs text-muted">
             Grams are worked out from the split at 4, 4 and 9 kcal per gram, so they always add
             back up to your calorie target.
           </Text>
           {activePreset ? null : (
-            <View className="mt-4">
+            <View className="mt-lg">
               <AppButton
                 size="sm"
                 tone="quiet"

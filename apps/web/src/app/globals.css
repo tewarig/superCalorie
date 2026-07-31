@@ -25,6 +25,7 @@
   --moss-deep: #173B2C;
   --moss-pale: #DDEBDD;
   --citrus: #E97833;
+  --citrus-deep: #C9520F;
   --citrus-pale: #FBE3CE;
   --berry: #A6435D;
   --berry-pale: #F4DEE4;
@@ -46,6 +47,7 @@
   --color-moss-deep: var(--moss-deep);
   --color-moss-pale: var(--moss-pale);
   --color-citrus: var(--citrus);
+  --color-citrus-deep: var(--citrus-deep);
   --color-citrus-pale: var(--citrus-pale);
   --color-berry: var(--berry);
   --color-berry-pale: var(--berry-pale);
@@ -56,8 +58,52 @@
   --color-dial-muted: var(--dial-muted);
   --color-dial-soft: var(--dial-soft);
 
+  /*
+   * What each colour is for, rather than what it is. Use these for chrome —
+   * `bg-primary` outlives a rebrand in a way `bg-moss` does not — and the
+   * palette names above when the colour carries data. The neutrals have no
+   * role by design; see packages/ui/theme.cjs. Kept as `var()` indirection,
+   * never a second copy of the hex.
+   */
+  --color-primary: var(--moss);
+  --color-primary-strong: var(--moss-deep);
+  --color-primary-soft: var(--moss-pale);
+  --color-secondary: var(--citrus);
+  --color-secondary-strong: var(--citrus-deep);
+  --color-secondary-soft: var(--citrus-pale);
+  --color-danger: var(--berry);
+  --color-danger-soft: var(--berry-pale);
+  --color-warning: var(--grain);
+  --color-warning-soft: var(--grain-pale);
+
   --radius-card: 28px;
   --radius-control: 18px;
+  --radius-pill: 999px;
+
+  /*
+   * The spacing scale. Layout picks a step from here; Tailwind's own numeric
+   * scale stays for one-off geometry that is not spacing.
+   */
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-xxxl: 48px;
+  --spacing-gutter: 16px;
+  --spacing-fab: 56px;
+  --spacing-fab-clear: 96px;
+
+  /* The label tier, below Tailwind's smallest, plus the display size. */
+  --text-micro: 9px;
+  --text-caption: 10px;
+  --text-label: 11px;
+  --text-display: 44px;
+
+  --tracking-label: 2px;
+  --tracking-eyebrow: 3px;
 
   --font-display: var(--font-display), "Georgia", serif;
   --font-body: var(--font-body), "Avenir Next", sans-serif;

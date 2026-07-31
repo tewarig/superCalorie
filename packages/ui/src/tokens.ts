@@ -1,18 +1,27 @@
 /**
- * superCalorie design tokens.
+ * superCalorie design tokens, typed.
  *
- * Platform-agnostic values consumed by both the web (React DOM) and
- * native (React Native) component implementations. Keep everything here
- * serializable — no CSS strings, no platform APIs.
+ * Every value here comes from ../theme.cjs, which is the single source of
+ * truth and the file to read for what these mean and when to use which. This
+ * module exists because Tailwind classes cannot reach everywhere: SVG strokes,
+ * React Navigation options and the inline-style components all need a plain
+ * number or hex.
  *
- * The colours are read from ../theme.cjs rather than restated, so the
- * inline-style components and the Tailwind/NativeWind components cannot end
- * up on different palettes.
+ * Prefer a class when a class will do. Reach for these when it will not.
  */
-import { flatColors } from "../theme.cjs";
+import {
+  borderRadius,
+  fontSize as fontSizeScale,
+  letterSpacing as letterSpacingScale,
+  flatColors,
+  resolvedSemanticColors,
+  spacing,
+} from "../theme.cjs";
 
 const hex = flatColors();
+const role = resolvedSemanticColors();
 
+/** The raw palette — what each colour *is*. */
 export const palette = {
   // Warm paper neutrals
   canvas: hex.canvas,
@@ -30,6 +39,7 @@ export const palette = {
 
   // Accents
   citrus: hex.citrus,
+  citrusDeep: hex["citrus-deep"],
   citrusPale: hex["citrus-pale"],
   berry: hex.berry,
   berryPale: hex["berry-pale"],
@@ -39,10 +49,18 @@ export const palette = {
   white: "#FFFFFF",
 } as const;
 
+/**
+ * What each colour is *for*. Prefer these over `palette` — see theme.cjs.
+ *
+ * The neutrals have no role in the Tailwind layer, because `canvas`, `paper`,
+ * `line`, `ink` and `muted` already read as roles there. They are spelled out
+ * here anyway, because an inline style has no class to read and should not
+ * have to know that `ink` happens to be the text colour.
+ */
 export const color = {
   background: palette.canvas,
   surface: palette.paper,
-  surfaceMuted: palette.mossPale,
+  surfaceMuted: role["primary-soft"],
   border: palette.line,
 
   text: palette.ink,
@@ -52,44 +70,22 @@ export const color = {
   textFaint: palette.muted,
   textOnDark: palette.paper,
 
-  primary: palette.moss,
-  primaryPressed: palette.mossDeep,
-  primarySubtle: palette.mossPale,
-  accent: palette.citrus,
-  accentPressed: "#C9520F",
-  accentSubtle: palette.citrusPale,
+  primary: role.primary,
+  primaryPressed: role["primary-strong"],
+  primarySubtle: role["primary-soft"],
 
-  danger: palette.berry,
+  secondary: role.secondary,
+  secondaryPressed: role["secondary-strong"],
+  secondarySubtle: role["secondary-soft"],
+
+  danger: role.danger,
+  warning: role.warning,
 } as const;
 
-export const space = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  xxxl: 48,
-} as const;
-
-export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 20,
-  control: 18,
-  card: 28,
-  pill: 999,
-} as const;
-
-export const fontSize = {
-  xs: 12,
-  sm: 14,
-  md: 16,
-  lg: 18,
-  xl: 24,
-  xxl: 32,
-  display: 44,
-} as const;
+export const space = spacing;
+export const radius = borderRadius;
+export const fontSize = fontSizeScale;
+export const letterSpacing = letterSpacingScale;
 
 export const fontWeight = {
   regular: "400",

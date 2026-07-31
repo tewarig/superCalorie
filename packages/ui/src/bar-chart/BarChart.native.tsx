@@ -16,7 +16,7 @@ export function BarChart({
 
   return (
     <View>
-      <View className="flex-row items-end gap-1" style={{ height }}>
+      <View className="flex-row items-end gap-xs" style={{ height }}>
         {/* The goal line sits behind the columns, spanning the full width. */}
         {goalFraction === null ? null : (
           <View
@@ -38,9 +38,9 @@ export function BarChart({
           />
         ))}
       </View>
-      <View className="mt-2 flex-row gap-1">
+      <View className="mt-sm flex-row gap-xs">
         {bars.map((bar) => (
-          <Text className="flex-1 text-center font-body text-[10px] text-muted" key={bar.key}>
+          <Text className="flex-1 text-center font-body text-caption text-muted" key={bar.key}>
             {bar.label}
           </Text>
         ))}

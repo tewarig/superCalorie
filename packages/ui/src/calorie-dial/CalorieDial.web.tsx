@@ -13,7 +13,7 @@ export function CalorieDial({ eaten, goal }: CalorieDialProps) {
   const { complete, over } = geometry;
 
   return (
-    <div className="flex flex-wrap items-center gap-6 overflow-hidden rounded-card bg-ink p-6">
+    <div className="flex flex-wrap items-center gap-xl overflow-hidden rounded-card bg-ink p-xl">
       <svg aria-hidden="true" className="shrink-0" height="132" viewBox="0 0 132 132" width="132">
         <circle cx="66" cy="66" fill="none" r={RADIUS} stroke="var(--color-dial-track)" strokeWidth="12" />
         <circle
@@ -31,12 +31,12 @@ export function CalorieDial({ eaten, goal }: CalorieDialProps) {
         />
       </svg>
       <div className="min-w-0">
-        <p className="font-bold text-xs uppercase tracking-[3px] text-dial-muted">Today&apos;s fuel</p>
-        <p className="mt-4 flex items-end gap-2">
+        <p className="font-bold text-xs uppercase tracking-eyebrow text-dial-muted">Today&apos;s fuel</p>
+        <p className="mt-lg flex items-end gap-sm">
           <span className="font-display text-6xl text-paper">{eaten}</span>
-          <span className="mb-2 text-base text-dial-muted">of {goal} kcal</span>
+          <span className="mb-sm text-base text-dial-muted">of {goal} kcal</span>
         </p>
-        <p className={`mt-3 font-bold text-sm ${over ? "text-citrus" : "text-dial-soft"}`}>{dialCaption(geometry)}</p>
+        <p className={`mt-md font-bold text-sm ${over ? "text-citrus" : "text-dial-soft"}`}>{dialCaption(geometry)}</p>
       </div>
     </div>
   );

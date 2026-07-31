@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Platform, Text } from "react-native";
-import { colors } from "@/lib/theme";
+import { role } from "@/lib/theme";
 
 /**
  * The four tabs, in the order they are reached for.
@@ -22,11 +22,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.moss,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarActiveTintColor: role.primary,
+        tabBarInactiveTintColor: role.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.paper,
-          borderTopColor: colors.line,
+          backgroundColor: role.surface,
+          borderTopColor: role.border,
         },
         tabBarLabelStyle: { fontFamily: "DMSans_700Bold", fontSize: 11 },
       }}

@@ -15,7 +15,7 @@ export function BarChart({
 
   return (
     <div>
-      <div className="relative flex items-end gap-1" style={{ height }}>
+      <div className="relative flex items-end gap-xs" style={{ height }}>
         {/* The goal line sits behind the columns, spanning the full width. */}
         {goalFraction === null ? null : (
           <div
@@ -37,9 +37,9 @@ export function BarChart({
           />
         ))}
       </div>
-      <div className="mt-2 flex gap-1">
+      <div className="mt-sm flex gap-xs">
         {bars.map((bar) => (
-          <span className="flex-1 text-center text-[10px] text-muted" key={bar.key}>
+          <span className="flex-1 text-center text-caption text-muted" key={bar.key}>
             {bar.label}
           </span>
         ))}

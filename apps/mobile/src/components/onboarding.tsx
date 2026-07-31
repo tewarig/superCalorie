@@ -4,6 +4,7 @@ import { Surface } from "@supercalorie/ui/surface";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { role } from "@/lib/theme";
 
 /** The instance this build points at. Empty until one is published. */
 const HOSTED_URL = process.env.EXPO_PUBLIC_HOSTED_URL ?? "";
@@ -21,11 +22,11 @@ function Choice({
 }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
-      <Surface className="gap-1">
-        <View className="flex-row items-center gap-2">
+      <Surface className="gap-xs">
+        <View className="flex-row items-center gap-sm">
           <Text className="font-bold text-base text-ink">{title}</Text>
           {badge ? (
-            <Text className="rounded-full bg-moss-pale px-2 py-0.5 font-bold text-[10px] uppercase tracking-wide text-moss">
+            <Text className="rounded-full bg-primary-soft px-sm py-xxs font-bold text-caption uppercase tracking-label text-primary">
               {badge}
             </Text>
           ) : null}
@@ -53,16 +54,16 @@ export function Onboarding({ onChoose }: { onChoose: (connection: Connection) =>
 
   return (
     <SafeAreaView className="flex-1 bg-canvas">
-      <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-8" keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerClassName="gap-lg px-gutter pb-xxxl pt-xxl" keyboardShouldPersistTaps="handled">
         <View>
           <Text className="font-display text-4xl text-ink">superCalorie</Text>
-          <Text className="mt-2 font-body text-base text-muted">
+          <Text className="mt-sm font-body text-base text-muted">
             How would you like to use it?
           </Text>
         </View>
 
         {selfHosting ? (
-          <Surface className="gap-3">
+          <Surface className="gap-md">
             <Text className="font-bold text-base text-ink">Your server</Text>
             <Text className="font-body text-sm text-muted">
               The address superCalorie is running at, including https://
@@ -71,18 +72,18 @@ export function Onboarding({ onChoose }: { onChoose: (connection: Connection) =>
               accessibilityLabel="Server address"
               autoCapitalize="none"
               autoCorrect={false}
-              className="rounded-control border border-line bg-canvas px-4 py-3 font-body text-base text-ink"
+              className="rounded-control border border-line bg-canvas px-lg py-md font-body text-base text-ink"
               inputMode="url"
               onChangeText={(text) => {
                 setUrl(text);
                 setTouched(true);
               }}
               placeholder="https://calories.example.com"
-              placeholderTextColor="#63746B"
+              placeholderTextColor={role.textFaint}
               value={url}
             />
-            {error ? <Text className="font-body text-sm text-berry">{error}</Text> : null}
-            <View className="flex-row gap-2">
+            {error ? <Text className="font-body text-sm text-danger">{error}</Text> : null}
+            <View className="flex-row gap-sm">
               <AppButton
                 disabled={serverUrlError(url) !== null}
                 size="sm"
@@ -98,7 +99,7 @@ export function Onboarding({ onChoose }: { onChoose: (connection: Connection) =>
             </View>
           </Surface>
         ) : (
-          <View className="gap-3">
+          <View className="gap-md">
             <Choice
               badge="No account"
               detail="Everything stays on this device and works offline. Export any time as JSON or CSV."
